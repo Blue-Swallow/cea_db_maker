@@ -152,31 +152,31 @@ Input Polyberization Number. If you didn't assign it, please input "n"
   
 **ロケットパラメタ一覧**
 | Symbol | Parameter |
----|---
-| CSTAR | c* 効率 |
-| CF | 推力係数 |
-| Isp | 比推力(最適膨張) [s]|
-| Ivac | 真空中比推力 [s]|
-| MACH | マッハ数 |  
+----|----
+|CSTAR |c* 効率 |
+|CF |推力係数 |
+|Isp |比推力(最適膨張) [s]|
+|Ivac |真空中比推力 [s]|
+|MACH |マッハ数 |  
   
 **熱力学的パラメタ一覧**
 | Symbol | Parameter |
----|---
-| Cp | 定圧比熱 [kJ/kg-K]|
-| G | ギブス自由エネルギ [kJ/kg]|
-| GAMMAs | 比熱比 |
-| H | エンタルピ [kJ/kg] |
-| M | モル質量 [kg/mol] |
-| P | 圧力 [MPa] |
-| RHO | 密度 [kg/m^3] |
-| S | エントロピ [kJ/kg-K] |
-| SON | 音速 [m/s] |
-| T | 温度 [K] |
-| U | 内部エネルギ [ｋJ/kg] |
+----|----
+|Cp |定圧比熱 [kJ/kg-K]|
+|G |ギブス自由エネルギ [kJ/kg]|
+|GAMMAs |比熱比 |
+|H |エンタルピ [kJ/kg] |
+|M |モル質量 [kg/mol] |
+|P |圧力 [MPa] |
+|RHO |密度 [kg/m^3] |
+|S |エントロピ [kJ/kg-K] |
+|SON |音速 [m/s] |
+|T |温度 [K] |
+|U |内部エネルギ [ｋJ/kg] |
 
 **添字一覧**
 | Symbol | Subscription |
----|---
-| _c | 燃焼室後方における計算結果 |
-| _t | ノズルスロートにおける計算結果|
-| _e | ノズル出口における計算結果 |
+----|----
+|_c |燃焼室後方における計算結果 |
+|_t |ノズルスロートにおける計算結果|
+|_e |ノズル出口における計算結果 |
