@@ -147,8 +147,8 @@ def make_inp(path, option, of, Pc, oxid, fuel, h, elem, eps, n=""):
     prob = "case={} o/f={} rocket {} tcest,k=3800 p,bar={} sup,ae/at={}".format(inp_fname, round(of,3), option, round(Pc,3), round(eps,3))
     fuel = fuel + " h,kj/mol={} {} ".format(h, elem)
 #    outp = "siunits short"
-    outp = ""
-    file.write("prob\n\t{}\nreact\n\t{}\n\t{}\noutput\n\t{}\nend\n".format(prob,oxid,fuel,outp))
+    outp = "transport"
+    file.write("prob\n\t{}\nreact\n\t{}\n\t{}\noutput\t{}\nend\n".format(prob,oxid,fuel,outp))
     file.close()
 
 

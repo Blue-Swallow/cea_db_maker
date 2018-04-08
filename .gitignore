@@ -2,4 +2,5 @@
 *.out
 *.exe
 *.lib
+*.spec
 */
