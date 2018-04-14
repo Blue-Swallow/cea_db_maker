@@ -139,16 +139,17 @@ def make_inp(path, option, of, Pc, oxid, fuel, h, elem, eps, n=""):
     else:
         print("{},  {}".format(path, fld_name))
         os.makedirs(os.path.join(path, fld_name))
-
-    inp_fname = "Pc_{:0>4}__of_{:0>4}.inp".format(round(Pc,1), round(of,1)) #.inp file name, e.g. "Pc=1.0_of=6.0.inp"
+    num_round = int(2) #the number of decimal places in "Pc" & "of"
+#    inp_fname = "Pc_{:0^5}__of_{:0^5}.inp".format(round(Pc,num_round), round(of,num_round)) #.inp file name, e.g. "Pc=1.00_of=6.00.inp"
+    inp_fname = "Pc_{:0>5.2f}__of_{:0>5.2f}.inp".format(round(Pc,num_round), round(of,num_round)) #.inp file name, e.g. "Pc=1.00_of=6.00.inp"
     file = open(path+"/"+fld_name+"/"+ inp_fname, "w")
 
     Pc = Pc * 10    #Pc:Chamber pressure [bar]
-    prob = "case={} o/f={} rocket {} tcest,k=3800 p,bar={} sup,ae/at={}".format(inp_fname, round(of,3), option, round(Pc,3), round(eps,3))
+    prob = "case={} o/f={} rocket {} tcest,k=3800 p,bar={} sup,ae/at={}".format(inp_fname, round(of,4), option, round(Pc,4), round(eps,4))
     fuel = fuel + " h,kj/mol={} {} ".format(h, elem)
 #    outp = "siunits short"
-    outp = ""
-    file.write("prob\n\t{}\nreact\n\t{}\n\t{}\noutput\n\t{}\nend\n".format(prob,oxid,fuel,outp))
+    outp = "transport"
+    file.write("prob\n\t{}\nreact\n\t{}\n\t{}\noutput\t{}\nend\n".format(prob,oxid,fuel,outp))
     file.close()
 
 
@@ -199,6 +200,12 @@ class Cui_input():
 
     lang: string
         Selected language from the "langlist"
+    
+    option: int
+        represented number
+        0: equilibrium during expansion
+        1: frozen after the end of chamber
+        2: frozen after nozzle throat
     
     oxid: string
         must use a symbol written in NASA RP-1311-P2 app.B
@@ -251,11 +258,11 @@ class Cui_input():
     _tmp_["eps"] = {"jp": "\n\n開口比Ae/Atを入力してください.",
                     "en": "\n\nPlease input the area ratio, Ae/At."}
     
-    _tmp_["of"] = {"jp": "\n\n計算するO/Fの範囲を入力してください.\n例) 0.5~10 を 0.1毎に計算する場合.\n0.5　10　0.1",
-                "en": "\n\nPlease input the range of O/F where you want to calculate.\ne.g. If the range is 0.5 to 10 and the interval is 0.1\n0.5 10 0.1"}
+    _tmp_["of"] = {"jp": "\n\n計算するO/Fの範囲を入力してください.\n許容範囲：0.01~99.99 , 最小刻み幅：0.01\n例) 0.5~10 を 0.1毎に計算する場合.\n0.5　10.1　0.1",
+                "en": "\n\nPlease input the range of O/F where you want to calculate.\nRange: 0.01 ~ 99.99, Minimum interval: 00.1\ne.g. If the range is 0.5 to 10 and the interval is 0.1\n0.5 10.1 0.1"}
 
-    _tmp_["Pc"] = {"jp": "\n\n計算する燃焼室圧力[MPa]の範囲を入力してください.\n例) 0.5 MPa ~ 5.0 MPa を 0.1 MPa毎に計算する場合.\n0.5　5.0　0.1",
-                "en": "\n\nPlease input the range of Chamber pressure [MPa] where you want to calculate.\ne.g. If the range is 0.5 to 5.0 MPa and the interval is 0.1 MPa\n0.5 5.0 0.1"}
+    _tmp_["Pc"] = {"jp": "\n\n計算する燃焼室圧力[MPa]の範囲を入力してください.\n許容範囲：0.2~100 MPa, 最小刻み幅：0.01　MPa\n例) 0.5~5.0 MPa を 0.1 MPa毎に計算する場合.\n0.5　5.1　0.1",
+                "en": "\n\nPlease input the range of Chamber pressure [MPa] where you want to calculate.\nRange: 0.2~100 MPa, Minimum interval: 0.01 MPa\ne.g. If the range is 0.5 to 5.1 MPa and the interval is 0.1 MPa\n0.5 5.0 0.1"}
 
 
     def __init__(self):
@@ -429,9 +436,9 @@ class Cui_input():
         fuel = "fuel={} wt={} t,k={}".format(self.fuel, 100, self.f_itemp)
 
         elem_input = ""
-        for i in tqdm(self.f_elem):
+        for i in self.f_elem:
             elem_input = elem_input+"{} {} ".format(i, self.f_elem[i])
-        for i in range(np.size(Pc)):
+        for i in tqdm(range(np.size(Pc))):
             for j in range(np.size(of)):
                 make_inp(path, self.option, of[j], Pc[i], oxid, fuel, self.f_enthlpy, elem_input, self.eps)
 

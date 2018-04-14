@@ -23,6 +23,7 @@ class Read_output:
     cond_param = ["O/F", "Pc", "PHI"]
     therm_param = ["P", "T", "RHO", "H", "U", "G", "S", "M", "Cp", "GAMMAs", "SON", "MACH"]
     rock_param  = ["CSTAR", "CF", "Ivac", "Isp"]
+    trans_param = ["VISC", "CONDUCTIVITY", "PRANDTL"]
     
     @classmethod
     def _vextract_(cls, str_list):
@@ -67,12 +68,18 @@ class Read_output:
                 c: float, a value in chamber
                 t: float, a value at throat
                 e: float, a value at the end of nozzle
-        
+
+        trans_param: dict {key: elem}
+            key: string, a name of transport parameter: e.g. "VISC", "CONDUCTIVITY", "PLANDTL", etc...
+            elem: list [t, e]  *in this case "t" and "e" values are equivalent
+                t: float, a value at the throat
+                e: float, a value at the end of nozzle        
+
         rock_param: dict {key: elem}
             key: string, a name of rocket parameter: e.g. "CSTR", "Isp", "CF", etc...
             elem: list [t, e]  *in this case "t" and "e" values are equivalent
                 t: float, a value at the throat
-                e: float, a value at the end of nozzle
+                e: float, a value at the end of nozzle               
         """
         out_fname = cea_fname + ".out"
         file = open(out_fname,"r")
@@ -91,8 +98,15 @@ class Read_output:
         rock_param = cls.rock_param
         emp_list = ["" for i in range(len(rock_param))]
         rock_param = dict(zip(rock_param, emp_list))
+        
+#        rock_param  = ["Ae/At", "CSTAR", "CF", "Ivac", "Isp"]
+        trans_param = cls.trans_param
+        emp_list = ["" for i in range(len(trans_param))]
+        trans_param = dict(zip(trans_param, emp_list))
     
         line = str("null")
+        flag_cp = False
+        count_trans = 0
         while line:
             line = file.readline()
             warnings.filterwarnings("ignore") # ignore Further Warnings about "empty-string"
@@ -100,23 +114,31 @@ class Read_output:
             del(dat[0])
             if(len(dat)==0): # empty line
                 pass
-#            dat = line.split()
             else: # not-empty line
-#                dat_head = dat[0].replace(",", "").replace("=","")
-                dat_head = dat[0].replace(",", "")
+                dat_head = dat[0].split(",")[0]
                 if(dat_head in cond_param and len(dat)>3):
                     tmp = cls._vextract_(dat)
                     cond_param["O/F"] = tmp[0]
                     cond_param["PHI"] = tmp[3]
                 elif(dat_head in therm_param): #line containing therm_param
-                    therm_param[dat_head] = cls._vextract_(dat)
+                    if (dat_head!="Cp"):
+                        therm_param[dat_head] = cls._vextract_(dat)
+                    elif (dat_head=="Cp" and flag_cp==False):
+                        therm_param[dat_head] = cls._vextract_(dat)
+                        flag_cp = True
                     if (dat_head == "P"):
                         cond_param["Pc"] = round(therm_param[dat_head][0] *1.0e-1, 4)
                         therm_param[dat_head] = [round(i*1.0e-1, 4) for i in therm_param[dat_head]]
                 elif(dat_head in rock_param): #line containing rock_param
-                    rock_param[dat_head] = cls._vextract_(dat)                
+                    rock_param[dat_head] = cls._vextract_(dat)
+                elif(dat_head in trans_param):
+                    if (dat_head=="VISC"):
+                        trans_param[dat_head] = cls._vextract_(dat)
+                    elif(count_trans < 3):
+                        trans_param[dat_head] = cls._vextract_(dat)
+                        count_trans += 1
         file.close()
-    
+
     #    therm_ntpl = collections.namedtuple("thermval",["c","t","e"])    
     #    rock_ntpl = collections.namedtuple("rockval",["t","e"])
     #    P = therm_ntpl(c=therm_param["P"][0], t=therm_param["P"][1], e=therm_param["P"][2])
@@ -137,7 +159,7 @@ class Read_output:
     #    Ispvac = rock_ntpl(t=rock_param["Ivac"][0], e=rock_param["Ivac"][1])
     #    Isp = rock_ntpl(t=rock_param["Isp"][0], e=rock_param["Isp"][1])    
     
-        return(cond_param, therm_param, rock_param)
+        return(cond_param, therm_param, trans_param, rock_param)
 
 
 
@@ -288,6 +310,7 @@ class CEA_execute:
         print("Input Polymerization Number. If you did't assign it, please input \"n\" \n(Directory structure is like \"O2+PMMA/n=100\")")
         num = input()
         if num=="n":
+#            global outfld_path
             inpfld_path = fld_path + "/inp"
             outfld_path = fld_path + "/out"
         else:
@@ -352,7 +375,7 @@ class CEA_execute:
        
     def all_exe(self):
         """
-        Execute CEA calculation with respect to all condiiton: Pc & o/f
+        Execute CEA calculation with respect to all conditon: Pc & o/f
         
         Return
         ------
@@ -369,7 +392,9 @@ class CEA_execute:
             shutil.copy(os.path.join(inpfld_path,fname+".inp"), os.path.join(cadir,"tmp.inp"))
             self.single_exe("tmp")
             shutil.copy(os.path.join(cadir,"tmp.out"), os.path.join(outfld_path, fname+".out"))
-            cond, therm, rock = Read_output.read_out("tmp")
+            cond, therm, trans, rock = Read_output.read_out("tmp")
+            
+            therm.update(trans) #combine dict "therm" and dict "trans"
 
             if i ==0: 
                 #initialize
@@ -416,7 +441,7 @@ class CEA_execute:
             for j in rock:
                 #Substitute each rocket-parameter value
                 value_rock[j][p,q] = rock[j][1]
-
+                
         self._csv_out_(outfld_path, of, Pc, value_c, point="c") #write out in csv-file
         self._csv_out_(outfld_path, of, Pc, value_t, point="t") #write out in csv-file
         self._csv_out_(outfld_path, of, Pc, value_e, point="e") #write out in csv-file
