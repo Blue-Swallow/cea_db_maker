@@ -201,6 +201,12 @@ class Cui_input():
     lang: string
         Selected language from the "langlist"
     
+    option: int
+        represented number
+        0: equilibrium during expansion
+        1: frozen after the end of chamber
+        2: frozen after nozzle throat
+    
     oxid: string
         must use a symbol written in NASA RP-1311-P2 app.B
         
@@ -252,11 +258,11 @@ class Cui_input():
     _tmp_["eps"] = {"jp": "\n\n開口比Ae/Atを入力してください.",
                     "en": "\n\nPlease input the area ratio, Ae/At."}
     
-    _tmp_["of"] = {"jp": "\n\n計算するO/Fの範囲を入力してください.\n例) 0.5~10 を 0.1毎に計算する場合.\n0.5　10.1　0.1",
-                "en": "\n\nPlease input the range of O/F where you want to calculate.\ne.g. If the range is 0.5 to 10 and the interval is 0.1\n0.5 10.1 0.1"}
+    _tmp_["of"] = {"jp": "\n\n計算するO/Fの範囲を入力してください.\n許容範囲：0.01~99.99 , 最小刻み幅：0.01\n例) 0.5~10 を 0.1毎に計算する場合.\n0.5　10.1　0.1",
+                "en": "\n\nPlease input the range of O/F where you want to calculate.\nRange: 0.01 ~ 99.99, Minimum interval: 00.1\ne.g. If the range is 0.5 to 10 and the interval is 0.1\n0.5 10.1 0.1"}
 
-    _tmp_["Pc"] = {"jp": "\n\n計算する燃焼室圧力[MPa]の範囲を入力してください.\n例) 0.5 MPa ~ 5.0 MPa を 0.1 MPa毎に計算する場合.\n0.5　5.1　0.1",
-                "en": "\n\nPlease input the range of Chamber pressure [MPa] where you want to calculate.\ne.g. If the range is 0.5 to 5.1 MPa and the interval is 0.1 MPa\n0.5 5.0 0.1"}
+    _tmp_["Pc"] = {"jp": "\n\n計算する燃焼室圧力[MPa]の範囲を入力してください.\n許容範囲：0.2~100 MPa, 最小刻み幅：0.01　MPa\n例) 0.5~5.0 MPa を 0.1 MPa毎に計算する場合.\n0.5　5.1　0.1",
+                "en": "\n\nPlease input the range of Chamber pressure [MPa] where you want to calculate.\nRange: 0.2~100 MPa, Minimum interval: 0.01 MPa\ne.g. If the range is 0.5 to 5.1 MPa and the interval is 0.1 MPa\n0.5 5.0 0.1"}
 
 
     def __init__(self):
