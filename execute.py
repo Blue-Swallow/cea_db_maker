@@ -304,7 +304,7 @@ class CEA_execute:
     
     def _getpath_(self):
         """
-        Get folder path
+        Return the folders path
         
         Return
         ------
@@ -316,7 +316,10 @@ class CEA_execute:
             Folder's path containing input files, "*.inp" 
 
         outfld_path: string,
-            Folder's path to contain output files, "*.out" 
+            Folder's path to contain output files, "*.out"
+            
+        dbfld_path: string
+            Folder's path to contain csv database file, "*.csv"
         """
         
         cadir = os.path.dirname(os.path.abspath(__file__))
@@ -328,26 +331,32 @@ class CEA_execute:
 #            global outfld_path
             inpfld_path = fld_path + "/inp"
             outfld_path = fld_path + "/out"
+            dbfld_path = fld_path + "/csv_database"
         else:
             inpfld_path = fld_path + "/inp_n={}".format(num)
             outfld_path = fld_path + "/out_n={}".format(num)
+            dbfld_path = fld_path + "/csv_database_n={}".format(num)
         if os.path.exists(inpfld_path):
             if os.path.exists(outfld_path):
                 pass
             else:
                 os.mkdir(outfld_path) #make output folder
+            if os.path.exists(dbfld_path):
+                pass
+            else:
+                os.mkdir(dbfld_path) #make output folder
         else:
             sys.exit("There is no such a directory, \n\"{}\"".format(fld_path))
-        return(cadir, inpfld_path, outfld_path)
+        return(cadir, inpfld_path, outfld_path, dbfld_path)
 
 
-    def _csv_out_(self, outfld_path, of, Pc, val_dict, point):
+    def _csv_out_(self, dbfld_path, of, Pc, val_dict, point):
         """
         Write out calculattion results in csv-files
         
         Parameters
         ----------
-        outfld_path: string
+        dbfld_path: string
             folder path where csv-files is outputted 
         of: list
             contains O/F values
@@ -362,11 +371,11 @@ class CEA_execute:
         if len(point)==0:
             for i in val_dict:
                 df = pd.DataFrame(val_dict[i], index=of, columns=Pc)
-                df.to_csv(os.path.join(outfld_path, i) + ".csv")
+                df.to_csv(os.path.join(dbfld_path, i) + ".csv")
         else:
             for i in val_dict:
                 df = pd.DataFrame(val_dict[i], index=of, columns=Pc)
-                df.to_csv(os.path.join(outfld_path, i)+"_"+point+".csv")
+                df.to_csv(os.path.join(dbfld_path, i)+"_"+point+".csv")
 
     def single_exe(self, inp_fname):
         """
@@ -398,7 +407,7 @@ class CEA_execute:
             therm_param: dict, Thermodynamics parameters  \n
             rocket_param: dict, Rocket parameters
         """
-        cadir, inpfld_path, outfld_path = self._getpath_()
+        cadir, inpfld_path, outfld_path, dbfld_path = self._getpath_()
         split =  lambda r: os.path.splitext(r)[0] # get file name without extention
         inp_list = [os.path.basename(split(r))  for r in glob.glob(inpfld_path + "/*.inp")]
           
@@ -457,10 +466,10 @@ class CEA_execute:
                 #Substitute each rocket-parameter value
                 value_rock[j][p,q] = rock[j][1]
                 
-        self._csv_out_(outfld_path, of, Pc, value_c, point="c") #write out in csv-file
-        self._csv_out_(outfld_path, of, Pc, value_t, point="t") #write out in csv-file
-        self._csv_out_(outfld_path, of, Pc, value_e, point="e") #write out in csv-file
-        self._csv_out_(outfld_path, of, Pc, value_rock, point="") #write out in csv-file
+        self._csv_out_(dbfld_path, of, Pc, value_c, point="c") #write out in csv-file
+        self._csv_out_(dbfld_path, of, Pc, value_t, point="t") #write out in csv-file
+        self._csv_out_(dbfld_path, of, Pc, value_e, point="e") #write out in csv-file
+        self._csv_out_(dbfld_path, of, Pc, value_rock, point="") #write out in csv-file
             
         return(of, Pc, value_c, value_t, value_e, value_rock)
 
