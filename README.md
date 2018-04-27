@@ -183,6 +183,7 @@ Input Polyberization Number. If you didn't assign it, please input "n"
 |VISC |粘性係数 [mP] |
 |CONDUCTIVITY |熱伝導率 [mW/cm-K] |
 |PLANDTL |プラントル数 [-] |
+
 ※frozen 条件で計算した**熱伝導率**と**プラントル数**は反応による生成物の影響を考慮していないため低い値が得られる。正しく計算したい場合はequilibrium条件で計算しなければいけない。
 
 
