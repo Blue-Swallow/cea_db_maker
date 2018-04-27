@@ -145,12 +145,13 @@ Input Polyberization Number. If you didn't assign it, please input "n"
 >> n
 ~~~
 
-* 100%になって完了すれば，指定したフォルダ (今回は `test` ) 中のフォルダ `out` に各パラメタ毎のcsvファイル，および各計算条件毎のCEA出力(out)ファイルが生成されているはず  
+* 100%になって完了すれば，指定したフォルダ (今回は `test` ) 中のフォルダ `csv_database` に各パラメタ毎のcsvファイル，`out`に各計算条件毎のCEA出力(out)ファイルが生成されているはず  
 ※csvファルは，縦軸O/F,横軸Pc(燃焼室圧力)
   
 
   
 **ロケットパラメタ一覧**
+
 | Symbol | Parameter |
 |:---|:---|
 |CSTAR |c* 効率 |
@@ -160,6 +161,7 @@ Input Polyberization Number. If you didn't assign it, please input "n"
 |MACH |マッハ数 |  
   
 **熱力学的パラメタ一覧**
+
 | Symbol | Parameter |
 |:---|:---|
 |Cp |定圧比熱 [kJ/kg-K] |
@@ -175,6 +177,7 @@ Input Polyberization Number. If you didn't assign it, please input "n"
 |U |内部エネルギ [ｋJ/kg] |
 
 **添字一覧**
+
 | Symbol | Subscription |
 |:---|:---|
 |_c |燃焼室後方における計算結果 |
