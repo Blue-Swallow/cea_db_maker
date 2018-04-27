@@ -152,18 +152,18 @@ Input Polyberization Number. If you didn't assign it, please input "n"
   
 **ロケットパラメタ一覧**
 | Symbol | Parameter |
-----|----
+|:---|:---|
 |CSTAR |c* 効率 |
 |CF |推力係数 |
-|Isp |比推力(最適膨張) [s]|
-|Ivac |真空中比推力 [s]|
+|Isp |比推力(最適膨張) [s] |
+|Ivac |真空中比推力 [s] |
 |MACH |マッハ数 |  
   
 **熱力学的パラメタ一覧**
 | Symbol | Parameter |
-----|----
-|Cp |定圧比熱 [kJ/kg-K]|
-|G |ギブス自由エネルギ [kJ/kg]|
+|:---|:---|
+|Cp |定圧比熱 [kJ/kg-K] |
+|G |ギブス自由エネルギ [kJ/kg] |
 |GAMMAs |比熱比 |
 |H |エンタルピ [kJ/kg] |
 |M |モル質量 [kg/mol] |
@@ -176,7 +176,7 @@ Input Polyberization Number. If you didn't assign it, please input "n"
 
 **添字一覧**
 | Symbol | Subscription |
-----|----
+|:---|:---|
 |_c |燃焼室後方における計算結果 |
-|_t |ノズルスロートにおける計算結果|
+|_t |ノズルスロートにおける計算結果 |
 |_e |ノズル出口における計算結果 |
