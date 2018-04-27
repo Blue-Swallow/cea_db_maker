@@ -377,7 +377,7 @@ class Cui_input():
         tmp = input().split()
         for i in range(len(tmp)):
             if i%2==1:
-                self.f_elem[tmp[i-1]] = int(tmp[i])
+                self.f_elem[tmp[i-1]] = float(tmp[i])
                 
     def _inp_eps_(self):
         """
