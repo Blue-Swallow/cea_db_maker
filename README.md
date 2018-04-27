@@ -158,7 +158,6 @@ Input Polyberization Number. If you didn't assign it, please input "n"
 |CF |推力係数 |
 |Isp |比推力(最適膨張) [s] |
 |Ivac |真空中比推力 [s] |
-|MACH |マッハ数 |  
   
 **熱力学的パラメタ一覧**
 
@@ -169,12 +168,23 @@ Input Polyberization Number. If you didn't assign it, please input "n"
 |GAMMAs |比熱比 |
 |H |エンタルピ [kJ/kg] |
 |M |モル質量 [kg/mol] |
+|MACH |マッハ数 |
 |P |圧力 [MPa] |
 |RHO |密度 [kg/m^3] |
 |S |エントロピ [kJ/kg-K] |
 |SON |音速 [m/s] |
 |T |温度 [K] |
 |U |内部エネルギ [ｋJ/kg] |
+
+**熱輸送関係のパラメタ一覧**
+
+| Symbol | Parameter |
+|:---|:---|
+|VISC |粘性係数 [mP] |
+|CONDUCTIVITY |熱伝導率 [mW/cm-K] |
+|PLANDTL |プラントル数 [-] |
+※frozen 条件で計算した**熱伝導率**と**プラントル数**は反応による生成物の影響を考慮していないため低い値が得られる。正しく計算したい場合はequilibrium条件で計算しなければいけない。
+
 
 **添字一覧**
 
