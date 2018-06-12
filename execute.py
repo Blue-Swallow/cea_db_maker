@@ -199,7 +199,7 @@ class Read_datset:
             self.of = np.asarray([float(i) for i in dataframe.index])
             self.Pc = np.asarray([float(i) for i in dataframe.columns])
         else:
-            print("There is no such a dataset file/n{}".format(self.fpath))
+            print("There is no such a dataset file/n{}".format(self.fld_path))
     
     def _read_csv_(self, param_name):
         """
@@ -468,4 +468,7 @@ class CEA_execute:
 if __name__ == "__main__":
     inst = CEA_execute()
     of, Pc, value_c, value_t, value_e, value_rock = inst.all_exe()
+#    cdir = os.path.dirname(os.path.abspath(__file__))
+#    dbfld_path = os.path.join(cdir, "GOX_PE", "csv_database")
+#    inst2 = Read_datset(dbfld_path)
 
