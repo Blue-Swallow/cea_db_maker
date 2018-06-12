@@ -145,28 +145,30 @@ Input Polyberization Number. If you didn't assign it, please input "n"
 >> n
 ~~~
 
-* 100%になって完了すれば，指定したフォルダ (今回は `test` ) 中のフォルダ `out` に各パラメタ毎のcsvファイル，および各計算条件毎のCEA出力(out)ファイルが生成されているはず  
+* 100%になって完了すれば，指定したフォルダ (今回は `test` ) 中のフォルダ `csv_database` に各パラメタ毎のcsvファイル，`out`に各計算条件毎のCEA出力(out)ファイルが生成されているはず  
 ※csvファルは，縦軸O/F,横軸Pc(燃焼室圧力)
   
 
   
 **ロケットパラメタ一覧**
+
 | Symbol | Parameter |
-----|----
+|:---|:---|
 |CSTAR |c* 効率 |
 |CF |推力係数 |
-|Isp |比推力(最適膨張) [s]|
-|Ivac |真空中比推力 [s]|
-|MACH |マッハ数 |  
+|Isp |比推力(最適膨張) [s] |
+|Ivac |真空中比推力 [s] |
   
 **熱力学的パラメタ一覧**
+
 | Symbol | Parameter |
-----|----
-|Cp |定圧比熱 [kJ/kg-K]|
-|G |ギブス自由エネルギ [kJ/kg]|
+|:---|:---|
+|Cp |定圧比熱 [kJ/kg-K] |
+|G |ギブス自由エネルギ [kJ/kg] |
 |GAMMAs |比熱比 |
 |H |エンタルピ [kJ/kg] |
 |M |モル質量 [kg/mol] |
+|MACH |マッハ数 |
 |P |圧力 [MPa] |
 |RHO |密度 [kg/m^3] |
 |S |エントロピ [kJ/kg-K] |
@@ -174,9 +176,21 @@ Input Polyberization Number. If you didn't assign it, please input "n"
 |T |温度 [K] |
 |U |内部エネルギ [ｋJ/kg] |
 
+**熱輸送関係のパラメタ一覧**
+
+| Symbol | Parameter |
+|:---|:---|
+|VISC |粘性係数 [mP] |
+|CONDUCTIVITY |熱伝導率 [mW/cm-K] |
+|PLANDTL |プラントル数 [-] |
+
+※frozen 条件で計算した**熱伝導率**と**プラントル数**は反応による生成物の影響を考慮していないため低い値が得られる。正しく計算したい場合はequilibrium条件で計算しなければいけない。
+
+
 **添字一覧**
+
 | Symbol | Subscription |
-----|----
+|:---|:---|
 |_c |燃焼室後方における計算結果 |
-|_t |ノズルスロートにおける計算結果|
+|_t |ノズルスロートにおける計算結果 |
 |_e |ノズル出口における計算結果 |
