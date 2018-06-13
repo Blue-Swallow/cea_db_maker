@@ -16,6 +16,185 @@ from subprocess import*
 import warnings
 
 
+class CEA_execute:
+    """
+    Class to excecute CEA calculation
+    """
+
+    def __init__(self):
+        pass
+    
+    def _getpath_(self):
+        """
+        Return the folders path
+        
+        Return
+        ------
+        cadir: string
+            Folder path containing this code file
+            Correspond with the path containing "FACE2.exe"
+
+        inpfld_path: string,
+            Folder's path containing input files, "*.inp" 
+
+        outfld_path: string,
+            Folder's path to contain output files, "*.out"
+            
+        dbfld_path: string
+            Folder's path to contain csv database file, "*.csv"
+        """
+        
+        cadir = os.path.dirname(os.path.abspath(__file__))
+        print("Input Folder Name (e.g. \"O2+PMMA\")>>")
+        fld_path = cadir + "/" + input()
+        print("Input Polymerization Number. If you did't assign it, please input \"n\" \n(Directory structure is like \"O2+PMMA/n=100\")")
+        num = input()
+        if num=="n":
+#            global outfld_path
+            inpfld_path = fld_path + "/inp"
+            outfld_path = fld_path + "/out"
+            dbfld_path = fld_path + "/csv_database"
+        else:
+            inpfld_path = fld_path + "/inp_n={}".format(num)
+            outfld_path = fld_path + "/out_n={}".format(num)
+            dbfld_path = fld_path + "/csv_database_n={}".format(num)
+        if os.path.exists(inpfld_path):
+            if os.path.exists(outfld_path):
+                pass
+            else:
+                os.mkdir(outfld_path) #make output folder
+            if os.path.exists(dbfld_path):
+                pass
+            else:
+                os.mkdir(dbfld_path) #make output folder
+        else:
+            sys.exit("There is no such a directory, \n\"{}\"".format(fld_path))
+        return(cadir, inpfld_path, outfld_path, dbfld_path)
+
+
+    def _csv_out_(self, dbfld_path, of, Pc, val_dict, point):
+        """
+        Write out calculattion results in csv-files
+        
+        Parameters
+        ----------
+        dbfld_path: string
+            folder path where csv-files is outputted 
+        of: list
+            contains O/F values
+        Pc: list,
+            contains Pc values
+        val_dict: dict, {key: value}
+            key: string, parameter name \n
+            value: 2-ndarray, parameter of row is of, parameter of column is Pc
+        point: string
+            identifer of file name : e.g. if point="c" -> file name = "xxx_c"
+        """
+        if len(point)==0:
+            for i in val_dict:
+                df = pd.DataFrame(val_dict[i], index=of, columns=Pc)
+                df.to_csv(os.path.join(dbfld_path, i) + ".csv")
+        else:
+            for i in val_dict:
+                df = pd.DataFrame(val_dict[i], index=of, columns=Pc)
+                df.to_csv(os.path.join(dbfld_path, i)+"_"+point+".csv")
+
+    def single_exe(self, inp_fname):
+        """
+        One-time CEA execution
+        
+        Parameter
+        --------
+        inp_fname : string
+            Input file name with out ".inp" extension \n
+            It is required to put ".inp" file in the same directory with "FCEA2.exe"
+        """
+        #cea_fname : Name and case of CEA input-file & output-file
+        cea_path = "FCEA2.exe"
+        command = inp_fname + "\n"
+        p = Popen(cea_path, stdin=PIPE, stdout=PIPE)
+        p.stdin.write(bytes(command,"utf-8"))
+        p.stdin.flush()
+        p.wait()
+        return
+        
+       
+    def all_exe(self):
+        """
+        Execute CEA calculation with respect to all conditon: Pc & o/f
+        
+        Return
+        ------
+        cea_out: tuple, (therm_param, rocket_param)
+            therm_param: dict, Thermodynamics parameters  \n
+            rocket_param: dict, Rocket parameters
+        """
+        cadir, inpfld_path, outfld_path, dbfld_path = self._getpath_()
+        split =  lambda r: os.path.splitext(r)[0] # get file name without extention
+        inp_list = [os.path.basename(split(r))  for r in glob.glob(inpfld_path + "/*.inp")]
+          
+               
+        for i, fname in enumerate(tqdm.tqdm(inp_list)):
+            shutil.copy(os.path.join(inpfld_path,fname+".inp"), os.path.join(cadir,"tmp.inp"))
+            self.single_exe("tmp")
+            shutil.copy(os.path.join(cadir,"tmp.out"), os.path.join(outfld_path, fname+".out"))
+            cond, therm, trans, rock = Read_output.read_out("tmp")
+            
+            therm.update(trans) #combine dict "therm" and dict "trans"
+
+            if i ==0: 
+                #initialize
+                of = []
+                Pc = [] 
+                value_c = copy.deepcopy(therm)
+                value_t = copy.deepcopy(therm)
+                value_e = copy.deepcopy(therm)
+                for j in therm:
+                    value_c[j] = np.empty((0,0), float)
+                    value_t[j] = np.empty((0,0), float)
+                    value_e[j] = np.empty((0,0), float)                    
+                value_rock = copy.deepcopy(rock)
+                for j in rock:
+                    value_rock[j] = np.empty((0,0), float)
+                
+            if cond["O/F"] not in of:
+                #extend row of array when o/f is renewed
+                of.append(cond["O/F"])
+                for j in therm:
+                    value_c[j] = np.append(value_c[j], np.empty((1,value_c[j].shape[1]), float), axis=0)
+                    value_t[j] = np.append(value_t[j], np.empty((1,value_t[j].shape[1]), float), axis=0)
+                    value_e[j] = np.append(value_e[j], np.empty((1,value_e[j].shape[1]), float), axis=0)
+                for j in rock:
+                    value_rock[j] = np.append(value_rock[j], np.empty((1,value_rock[j].shape[1]), float), axis=0)
+
+            if cond["Pc"] not in Pc:
+                #extend column of array when Pc is renewed
+                Pc.append(cond["Pc"])
+                for j in therm:
+                    value_c[j] = np.append(value_c[j], np.empty((value_c[j].shape[0],1), float), axis=1)
+                    value_t[j] = np.append(value_t[j], np.empty((value_t[j].shape[0],1), float), axis=1)
+                    value_e[j] = np.append(value_e[j], np.empty((value_e[j].shape[0],1), float), axis=1)
+                for j in rock:
+                    value_rock[j] = np.append(value_rock[j], np.empty((value_rock[j].shape[0],1), float), axis=1)
+
+            p = of.index(cond["O/F"])
+            q = Pc.index(cond["Pc"])
+            for j in therm:
+                #Substitute each themodynamic value
+                value_c[j][p,q] = therm[j][0]
+                value_t[j][p,q] = therm[j][1]
+                value_e[j][p,q] = therm[j][2]
+            for j in rock:
+                #Substitute each rocket-parameter value
+                value_rock[j][p,q] = rock[j][1]
+                
+        self._csv_out_(dbfld_path, of, Pc, value_c, point="c") #write out in csv-file
+        self._csv_out_(dbfld_path, of, Pc, value_t, point="t") #write out in csv-file
+        self._csv_out_(dbfld_path, of, Pc, value_e, point="e") #write out in csv-file
+        self._csv_out_(dbfld_path, of, Pc, value_rock, point="") #write out in csv-file
+            
+        return(of, Pc, value_c, value_t, value_e, value_rock)
+
 class Read_output:
     """
     Class to read ".out" file
@@ -263,7 +442,38 @@ class Read_datset:
             A function which return a interpolated value (array-like)
         """
         array = self._read_csv_(param_name)
-        func = interpolate.interp2d(self.of, self.Pc, array.T, kind="cubic", bounds_error=False)
+        func_interp = interpolate.interp2d(self.of, self.Pc, array.T, kind="cubic", bounds_error=False)
+        def func(of, Pc):
+            """Function to do interpolation and linear-extrapolation about the assigned database.
+            Extrapolation is avalable only when assigned O/F is out of data-base range
+            
+            Parameter
+            -----------
+            of: float,
+                O/F
+            Pc: float,
+                Chamber Pressure [Pa]
+            
+            Return
+            ----------
+            val: float
+                interpolated or extrapolated value
+            """
+            Pc = Pc*1.0e-6
+            cstr_array = func_interp(self.of, Pc)
+            if of<self.of.min():
+                diff_begin = (-3*cstr_array[0] +4*cstr_array[1] -cstr_array[2])/(2*(self.of[1]-self.of[0]))
+                ddiff_begin = (2*cstr_array[0] -5*cstr_array[1] + 4*cstr_array[2] -cstr_array[3])/np.power((self.of[1]-self.of[0]),2.0)
+                func_extrap = lambda of: diff_begin*(of-self.of.min()) + cstr_array[0]
+                val = func_extrap(of)
+            elif self.of.max()<of:
+                diff_end = (cstr_array[len(cstr_array)-3] -4* cstr_array[len(cstr_array)-2] +3*cstr_array[len(cstr_array)-1])/(2*(self.of[len(self.of)-1]-self.of[len(self.of)-2]))
+                ddiff_end = (-2*cstr_array[len(cstr_array)-4] +4*cstr_array[len(cstr_array)-3] -5*cstr_array[len(cstr_array)-2] +2*cstr_array[len(cstr_array)-1])/np.power(self.of[len(self.of)-1]-self.of[len(self.of)-2], 2.0)
+                func_extrap = lambda of: diff_end*(of-self.of.max()) + cstr_array[len(cstr_array)-1]
+                val = func_extrap(of)
+            else:
+                val = func_interp(of, Pc)[0]
+            return(val)
         return(func)
         
     def plot(self, param_name, pickup_num):    
@@ -299,184 +509,7 @@ class Read_datset:
 
 
 
-class CEA_execute:
-    """
-    Class to excecute CEA calculation
-    """
 
-    def __init__(self):
-        pass
-    
-    def _getpath_(self):
-        """
-        Return the folders path
-        
-        Return
-        ------
-        cadir: string
-            Folder path containing this code file
-            Correspond with the path containing "FACE2.exe"
-
-        inpfld_path: string,
-            Folder's path containing input files, "*.inp" 
-
-        outfld_path: string,
-            Folder's path to contain output files, "*.out"
-            
-        dbfld_path: string
-            Folder's path to contain csv database file, "*.csv"
-        """
-        
-        cadir = os.path.dirname(os.path.abspath(__file__))
-        print("Input Folder Name (e.g. \"O2+PMMA\")>>")
-        fld_path = cadir + "/" + input()
-        print("Input Polymerization Number. If you did't assign it, please input \"n\" \n(Directory structure is like \"O2+PMMA/n=100\")")
-        num = input()
-        if num=="n":
-#            global outfld_path
-            inpfld_path = fld_path + "/inp"
-            outfld_path = fld_path + "/out"
-            dbfld_path = fld_path + "/csv_database"
-        else:
-            inpfld_path = fld_path + "/inp_n={}".format(num)
-            outfld_path = fld_path + "/out_n={}".format(num)
-            dbfld_path = fld_path + "/csv_database_n={}".format(num)
-        if os.path.exists(inpfld_path):
-            if os.path.exists(outfld_path):
-                pass
-            else:
-                os.mkdir(outfld_path) #make output folder
-            if os.path.exists(dbfld_path):
-                pass
-            else:
-                os.mkdir(dbfld_path) #make output folder
-        else:
-            sys.exit("There is no such a directory, \n\"{}\"".format(fld_path))
-        return(cadir, inpfld_path, outfld_path, dbfld_path)
-
-
-    def _csv_out_(self, dbfld_path, of, Pc, val_dict, point):
-        """
-        Write out calculattion results in csv-files
-        
-        Parameters
-        ----------
-        dbfld_path: string
-            folder path where csv-files is outputted 
-        of: list
-            contains O/F values
-        Pc: list,
-            contains Pc values
-        val_dict: dict, {key: value}
-            key: string, parameter name \n
-            value: 2-ndarray, parameter of row is of, parameter of column is Pc
-        point: string
-            identifer of file name : e.g. if point="c" -> file name = "xxx_c"
-        """
-        if len(point)==0:
-            for i in val_dict:
-                df = pd.DataFrame(val_dict[i], index=of, columns=Pc)
-                df.to_csv(os.path.join(dbfld_path, i) + ".csv")
-        else:
-            for i in val_dict:
-                df = pd.DataFrame(val_dict[i], index=of, columns=Pc)
-                df.to_csv(os.path.join(dbfld_path, i)+"_"+point+".csv")
-
-    def single_exe(self, inp_fname):
-        """
-        One-time CEA execution
-        
-        Parameter
-        --------
-        inp_fname : string
-            Input file name with out ".inp" extension \n
-            It is required to put ".inp" file in the same directory with "FCEA2.exe"
-        """
-        #cea_fname : Name and case of CEA input-file & output-file
-        cea_path = "FCEA2.exe"
-        command = inp_fname + "\n"
-        p = Popen(cea_path, stdin=PIPE, stdout=PIPE)
-        p.stdin.write(bytes(command,"utf-8"))
-        p.stdin.flush()
-        p.wait()
-        return
-        
-       
-    def all_exe(self):
-        """
-        Execute CEA calculation with respect to all conditon: Pc & o/f
-        
-        Return
-        ------
-        cea_out: tuple, (therm_param, rocket_param)
-            therm_param: dict, Thermodynamics parameters  \n
-            rocket_param: dict, Rocket parameters
-        """
-        cadir, inpfld_path, outfld_path, dbfld_path = self._getpath_()
-        split =  lambda r: os.path.splitext(r)[0] # get file name without extention
-        inp_list = [os.path.basename(split(r))  for r in glob.glob(inpfld_path + "/*.inp")]
-          
-               
-        for i, fname in enumerate(tqdm.tqdm(inp_list)):
-            shutil.copy(os.path.join(inpfld_path,fname+".inp"), os.path.join(cadir,"tmp.inp"))
-            self.single_exe("tmp")
-            shutil.copy(os.path.join(cadir,"tmp.out"), os.path.join(outfld_path, fname+".out"))
-            cond, therm, trans, rock = Read_output.read_out("tmp")
-            
-            therm.update(trans) #combine dict "therm" and dict "trans"
-
-            if i ==0: 
-                #initialize
-                of = []
-                Pc = [] 
-                value_c = copy.deepcopy(therm)
-                value_t = copy.deepcopy(therm)
-                value_e = copy.deepcopy(therm)
-                for j in therm:
-                    value_c[j] = np.empty((0,0), float)
-                    value_t[j] = np.empty((0,0), float)
-                    value_e[j] = np.empty((0,0), float)                    
-                value_rock = copy.deepcopy(rock)
-                for j in rock:
-                    value_rock[j] = np.empty((0,0), float)
-                
-            if cond["O/F"] not in of:
-                #extend row of array when o/f is renewed
-                of.append(cond["O/F"])
-                for j in therm:
-                    value_c[j] = np.append(value_c[j], np.empty((1,value_c[j].shape[1]), float), axis=0)
-                    value_t[j] = np.append(value_t[j], np.empty((1,value_t[j].shape[1]), float), axis=0)
-                    value_e[j] = np.append(value_e[j], np.empty((1,value_e[j].shape[1]), float), axis=0)
-                for j in rock:
-                    value_rock[j] = np.append(value_rock[j], np.empty((1,value_rock[j].shape[1]), float), axis=0)
-
-            if cond["Pc"] not in Pc:
-                #extend column of array when Pc is renewed
-                Pc.append(cond["Pc"])
-                for j in therm:
-                    value_c[j] = np.append(value_c[j], np.empty((value_c[j].shape[0],1), float), axis=1)
-                    value_t[j] = np.append(value_t[j], np.empty((value_t[j].shape[0],1), float), axis=1)
-                    value_e[j] = np.append(value_e[j], np.empty((value_e[j].shape[0],1), float), axis=1)
-                for j in rock:
-                    value_rock[j] = np.append(value_rock[j], np.empty((value_rock[j].shape[0],1), float), axis=1)
-
-            p = of.index(cond["O/F"])
-            q = Pc.index(cond["Pc"])
-            for j in therm:
-                #Substitute each themodynamic value
-                value_c[j][p,q] = therm[j][0]
-                value_t[j][p,q] = therm[j][1]
-                value_e[j][p,q] = therm[j][2]
-            for j in rock:
-                #Substitute each rocket-parameter value
-                value_rock[j][p,q] = rock[j][1]
-                
-        self._csv_out_(dbfld_path, of, Pc, value_c, point="c") #write out in csv-file
-        self._csv_out_(dbfld_path, of, Pc, value_t, point="t") #write out in csv-file
-        self._csv_out_(dbfld_path, of, Pc, value_e, point="e") #write out in csv-file
-        self._csv_out_(dbfld_path, of, Pc, value_rock, point="") #write out in csv-file
-            
-        return(of, Pc, value_c, value_t, value_e, value_rock)
 
 
 if __name__ == "__main__":
