@@ -6,6 +6,7 @@ Created on Sun May 20 18:43:45 2018
 """
 
 import os
+import warnings
 import pandas as pd
 import numpy as np
 from scipy import optimize
@@ -149,7 +150,7 @@ class Cui_input():
             print("\nInput the Folder Name Containing Results of CEA >>")
             foldername = input()
             self.cea_path = os.path.join(cadir, foldername)
-            self.cea_path = os.path.join(self.cea_path, "out")
+            self.cea_path = os.path.join(self.cea_path, "csv_database")
             if os.path.exists(self.cea_path):
                 break
             else:
@@ -229,33 +230,77 @@ class Gen_excond_table:
         return(mox_range, Dt_range)
 
     def gen_table(self):
-        df = pd.DataFrame({}, index=self.mox_range)
+        self.df_Pc = pd.DataFrame({}, index=(self.mox_range*1.0e+3)) #convert the unit of mox to [g/s]
+        self.df_Vox = pd.DataFrame({}, index=(self.mox_range*1.0e+3)) #convert the unit of mox to [g/s]
+        self.df_Vf = pd.DataFrame({}, index=(self.mox_range*1.0e+3)) #convert the unit of mox to [g/s]
+        self.df_mf = pd.DataFrame({}, index=(self.mox_range*1.0e+3)) #convert the unit of mox to [g/s]
+        self.df_of = pd.DataFrame({}, index=(self.mox_range*1.0e+3)) #convert the unit of mox to [g/s]
+        self.df_cstr = pd.DataFrame({}, index=(self.mox_range*1.0e+3)) #convert the unit of mox to [g/s]
         for Dt in tqdm(self.Dt_range, desc="Dt loop", leave=True):
             Pc = np.array([])
+            Vox = np.array([])
+            Vf = np.array([])
+            mf = np.array([])
+            of = np.array([])
+            cstr = np.array([])
             for mox in tqdm(self.mox_range, desc="mox loop", leave=False):
-                tmp = self.converge_Pc(mox, Dt, Pc_init=1.0e+6)
-                Pc = np.append(Pc, tmp)
-            df[Dt] = Pc # insert calculated Pc to data frame, df.
-        return(df)
+                Pc_tmp = self.converge_Pc(mox, Dt)
+                Vox_tmp = func_Vox(Pc_tmp, mox, self.Rm, self.Tox, self.Df, self.a)
+                Vf_tmp = func_Vf(Vox_tmp, Pc_tmp, self.C1, self.C2)
+                mf_tmp = func_mf(Vf_tmp, self.rho_f, self.Df, self.a)
+                of_tmp = mox/mf_tmp
+                func_cstr = gen_func_cstr(self.cea_path)
+                cstr_tmp = func_cstr(of_tmp, Pc_tmp*1.0e-6)[0]
+                Pc = np.append(Pc, Pc_tmp)
+                Vox = np.append(Vox, Vox_tmp)
+                Vf = np.append(Vf, Vf_tmp)
+                mf = np.append(mf, mf_tmp)
+                of = np.append(of, of_tmp)
+                cstr = np.append(cstr, cstr_tmp)
+            self.df_Pc[(Dt*1.0e+3)] = Pc*1.0e-6  #convert the unit of Pc to [MPa]
+            self.df_Vox[(Dt*1.0e+3)] = Vox
+            self.df_Vf[(Dt*1.0e+3)] = Vf*1.0e+3  #convert the unit of Vf to [mm/s]
+            self.df_mf[(Dt*1.0e+3)] = mf*1.0e+3  #convert the unit of mox to [g/s]
+            self.df_of[(Dt*1.0e+3)] = of
+            self.df_cstr[(Dt*1.0e+3)] = cstr
+        return(self.df_Pc)
         
 
-    def converge_Pc(self, mox, Dt, Pc_init=1.0e+6):
-
+    def converge_Pc(self, mox, Dt, Pc_init=0.1e+5, maxiter=100):
+        print("Dt={:3.2f}mm, mox={:3.2f}g/s".format(Dt*1.0e+3, mox*1.0e+3))
+        bracket_end = self._find_min_iterat_func_Pc_(mox, Dt)
         try:
-            Pc = optimize.newton(self._iterat_func_Pc_, Pc_init, maxiter=10, tol=1.0e-3, args=(mox, Dt))
-        except:
-            Pc = optimize.brentq(self._iterat_func_Pc_, 1.0e+4, 10e+6, maxiter=50, xtol=1.0e-3, args=(mox, Dt), full_output=False)
+            Pc = optimize.brentq(self._iterat_func_Pc_, Pc_init, bracket_end, maxiter=maxiter, xtol=1.0e-3, args=(mox, Dt), full_output=False)
+        except RuntimeError:
+            Pc = np.nan
+            print("RuntimeError")
+        except ValueError:
+            Pc = np.nan
+            print("ValueError")
+            error_begin = self._iterat_func_Pc_(Pc_init, mox, Dt)
+            error_end = self._iterat_func_Pc_(bracket_end, mox, Dt)
+            if (error_begin*error_end>0):
+                print("There is no solution")
+                print("bracket begin: Pc={}, Pc_cal={}".format(Pc_init, error_begin))
+                print("bracket end: Pc={}, Pc_cal={}".format(bracket_end, error_end))
         return(Pc)
+    
+    def _find_min_iterat_func_Pc_(self, mox, Dt):
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            Pc_min = optimize.minimize_scalar(self._iterat_func_Pc_, args=(mox, Dt)).x
+        return(Pc_min)
     
     def _iterat_func_Pc_(self, Pc, mox, Dt):
         Vox = func_Vox(Pc, mox, self.Rm, self.Tox, self.Df, self.a)
         Vf = func_Vf(Vox, Pc, self.C1, self.C2, n=1.0)
-        of = func_of(Vox, Vf, self.rho_f, self.Df, self.a)
+        of = mox/func_mf(Vf, self.rho_f, self.Df, self.a)
         func_cstr = gen_func_cstr(self.cea_path)
         Pc_cal = func_Pc_cal(of, Pc, mox, func_cstr, Dt, self.eta)
         diff = Pc_cal - Pc
         error = diff/Pc_cal
         return(error)
+
 
 def func_Vox(Pc, mox, Rm, Tox, Df, a):
     Af = np.pi*np.power(Df, 2)/4
@@ -265,11 +310,11 @@ def func_Vox(Pc, mox, Rm, Tox, Df, a):
 def func_Vf(Vox, Pc, C1, C2, n=1.0):
     Vf = (C1/Vox + C2)*np.power(Pc, n) #[m/s]
     return(Vf)
-    
-def func_of(Vox, Vf, rho_f, Df, a):
+
+def func_mf(Vf, rho_f, Df, a):
     Af = np.pi*np.power(Df, 2)/4
-    of = Vox/(rho_f*Af*a*Vf)
-    return(of)
+    mf = rho_f*Af*a*Vf
+    return(mf)
 
 def gen_func_cstr(cea_path):
     func = Read_datset(cea_path).gen_func("CSTAR")
@@ -280,31 +325,52 @@ def func_Pc_cal(of, Pc, mox, func_cstr, Dt, eta):
     At = np.pi*np.power(Dt, 2)/4
     Pc_cal = eta*cstr*mox*(1 + 1/of)/At
     return(Pc_cal)
-   
 
 if __name__ == "__main__":
-#    cea_path = Cui_input().cea_path
+    cea_path = Cui_input().cea_path
     d = 0.3 #[mm]
     N = 433 #[個]
     Df = 38 #[mm]
-    eta = 0.9 #[-]
+    eta = 0.86 #[-]
     rho_f = 1191 #[kg/m^3]
-    Rm = 259.8 #[J/kg/K]
+#    Rm = 259.8 #[J/kg/K] GOX
+    Rm = 1.89e+2 #[J/kg/K] N2O
     Tox = 280 #[K]
-    C1 = 9.34e-8 # SI-unit
-    C2 = 2.46e-9 # SI-unit  
+#    C1 = 9.34e-8 # SI-unit
+#    C2 = 2.46e-9 # SI-unit
+#    C1 = 1.39e-7 # SI-unit
+#    C2 = 1.61e-9 # SI-unit
+    C1 = 6.76e-9 # SI-unit, N2O
+    C2 = 5.36e-10 # SI-unit, N2O
     instance = Gen_excond_table(d, N, Df, eta, rho_f, Rm, Tox, C1, C2, cea_path)
-    
     table = instance.gen_table()
-    table.index = np.round(table.index*1.0e+3, 3) # convert the unit of mox to [g/s]
-    table = table*1.0e-6 #convert the unit of Pc to [MPa]
-    table.columns = np.round(table.columns*1.0e+3, 3) #convert the unit of Dt to [mm]
+    table.to_csv("Pc_vs_mox+Dt.csv")
     
 # =============================================================================
 #     import matplotlib.pylab as plt
 #     mox = 10.0e-3 #[kg/s]
-#     Dt = 7.0e-3 #[mm]
-#     Pc_range = np.arange(0.2, 1.0, 0.1)*1.0e+6
+#     Dt = 9.0e-3 #[mm]
+#     a = 1 - N*np.power(d, 2.0)/np.power(Df, 2.0)
+#     Pc_range = np.arange(0.2, 5.0, 0.1)*1.0e+6
 #     error = [instance._iterat_func_Pc_(x, mox, Dt) for x in Pc_range]
-#     plt.plot(Pc_range*1.0e-6, error)
+#     Vox = [func_Vox(x, mox, Rm, Tox, Df*1.0e-3, a) for x in Pc_range]
+#     plt.plot(Pc_range*1.0e-6, Vox)
+#     Vf = [func_Vf(Vox[i], Pc_range[i], C1, C2) for i in range(len(Pc_range))]
+#     plt.plot(Pc_range*1.0e-6, Vf)
+#     mf = [func_mf(Vf[i], rho_f, Df*1.0e-3, a) for i in range(len(Pc_range))]
+#     plt.plot(Pc_range*1.0e-6, mf)
+#     func_cstr = gen_func_cstr(cea_path)
+#     cstr = [func_cstr(mf[i]/mox, Pc_range[i]*1.0e-6)[0] for i in range(len(Pc_range))]
+#     plt.plot(Pc_range*1.0e-6, cstr)
+#     of = mox/np.array(mf)
+#     plt.plot(Pc_range*1.0e-6, of)
+#     Pc_cal = np.array([func_Pc_cal(mox/mf[i], Pc_range[i], mox, func_cstr, Dt, eta) for i in range(len(Pc_range))])
+# 
+#     plt.plot(Pc_range*1.0e-6, Pc_cal*1.0e-6, label="Pc_cal")
+#     plt.plot(Pc_range*1.0e-6, (Pc_cal-Pc_range)*1.0e-6, label="difference")
+#     plt.plot(Pc_range*1.0e-6, error, label="error")
+#     plt.plot(Pc_range*1.0e-6, (Pc_cal-Pc_range)/Pc_cal, label="difference divided by Pc_cal")
+#     plt.plot(Pc_range*1.0e-6, (Pc_cal-Pc_range)/Pc_range, label="difference divided by Pc_range")
+#     print(instance._find_min_iterat_func_Pc_(mox, Dt))
 # =============================================================================
+

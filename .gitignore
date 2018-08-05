@@ -3,4 +3,13 @@
 *.exe
 *.lib
 *.spec
-*/
+*.bat
+Pc*.csv
+.*
+_*
+build
+cea_db/*
+!cea_db/sample
+exp_dat/*
+!exp_dat/sample
+
