@@ -3,4 +3,14 @@
 *.exe
 *.lib
 *.spec
-*/
+*.bat
+design_EBHR.py
+Pc*.csv
+.*
+_*
+build
+cea_db/*
+!cea_db/sample
+exp_dat/*
+!exp_dat/sample
+
