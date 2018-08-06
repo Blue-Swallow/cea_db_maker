@@ -19,12 +19,8 @@ class CEA_execute:
     Class to excecute CEA calculation
     """
 
-<<<<<<< HEAD:cea_exe.py
     def __init__(self, fld_path=None):
         self.fld_path = fld_path
-=======
-    def __init__(self):
->>>>>>> 069684d1f78f388fcabae509b367964fb060495b:execute.py
         pass
     
     def _getpath_(self):
@@ -48,7 +44,6 @@ class CEA_execute:
         """
         
         cadir = os.path.dirname(os.path.abspath(__file__))
-<<<<<<< HEAD:cea_exe.py
         if self.fld_path is None:
             input_path = input("Input Folder Name (e.g. \"O2+PMMA\")\n>>")
             self.fld_path = os.path.join(cadir, "cea_db", input_path)
@@ -64,21 +59,6 @@ class CEA_execute:
             inpfld_path = os.path.join(self.fld_path, "inp_n={}".format(num))
             outfld_path = os.path.join(self.fld_path, "out_n={}".format(num))
             dbfld_path = os.path.join(self.fld_path + "csv_database_n={}".format(num))
-=======
-        print("Input Folder Name (e.g. \"O2+PMMA\")>>")
-        fld_path = cadir + "/" + input()
-        print("Input Polymerization Number. If you did't assign it, please input \"n\" \n(Directory structure is like \"O2+PMMA/n=100\")")
-        num = input()
-        if num=="n":
-#            global outfld_path
-            inpfld_path = fld_path + "/inp"
-            outfld_path = fld_path + "/out"
-            dbfld_path = fld_path + "/csv_database"
-        else:
-            inpfld_path = fld_path + "/inp_n={}".format(num)
-            outfld_path = fld_path + "/out_n={}".format(num)
-            dbfld_path = fld_path + "/csv_database_n={}".format(num)
->>>>>>> 069684d1f78f388fcabae509b367964fb060495b:execute.py
         if os.path.exists(inpfld_path):
             if os.path.exists(outfld_path):
                 pass
@@ -89,11 +69,7 @@ class CEA_execute:
             else:
                 os.mkdir(dbfld_path) #make output folder
         else:
-<<<<<<< HEAD:cea_exe.py
             sys.exit("There is no such a directory, \n\"{}\"".format(self.fld_path))
-=======
-            sys.exit("There is no such a directory, \n\"{}\"".format(fld_path))
->>>>>>> 069684d1f78f388fcabae509b367964fb060495b:execute.py
         return(cadir, inpfld_path, outfld_path, dbfld_path)
 
 
@@ -135,11 +111,7 @@ class CEA_execute:
             It is required to put ".inp" file in the same directory with "FCEA2.exe"
         """
         #cea_fname : Name and case of CEA input-file & output-file
-<<<<<<< HEAD:cea_exe.py
         cea_path = os.path.join("cea", "FCEA2.exe")
-=======
-        cea_path = "FCEA2.exe"
->>>>>>> 069684d1f78f388fcabae509b367964fb060495b:execute.py
         command = inp_fname + "\n"
         p = Popen(cea_path, stdin=PIPE, stdout=PIPE)
         p.stdin.write(bytes(command,"utf-8"))
@@ -164,17 +136,10 @@ class CEA_execute:
           
                
         for i, fname in enumerate(tqdm.tqdm(inp_list)):
-<<<<<<< HEAD:cea_exe.py
             shutil.copy(os.path.join(inpfld_path,fname+".inp"), os.path.join(cadir,"cea","tmp.inp"))
             self.single_exe("tmp")
             shutil.copy(os.path.join(cadir, "cea", "tmp.out"), os.path.join(outfld_path, fname+".out"))
             cond, therm, trans, rock = Read_output("cea").read_out("tmp")
-=======
-            shutil.copy(os.path.join(inpfld_path,fname+".inp"), os.path.join(cadir,"tmp.inp"))
-            self.single_exe("tmp")
-            shutil.copy(os.path.join(cadir,"tmp.out"), os.path.join(outfld_path, fname+".out"))
-            cond, therm, trans, rock = Read_output.read_out("tmp")
->>>>>>> 069684d1f78f388fcabae509b367964fb060495b:execute.py
             
             therm.update(trans) #combine dict "therm" and dict "trans"
 
@@ -514,7 +479,6 @@ class Read_datset:
             """
             Pc = Pc*1.0e-6
             cstr_array = func_interp(self.of, Pc)
-<<<<<<< HEAD:cea_exe.py
             def extrapfunc_exp(of, a, b,diff, ddiff):
                 theta = ddiff/diff
                 p = np.log(diff/theta)/theta + a
@@ -590,21 +554,6 @@ class Read_datset:
                     val = func_interp(of, Pc)[0]
             return(val)
         
-=======
-            if of<self.of.min():
-                diff_begin = (-3*cstr_array[0] +4*cstr_array[1] -cstr_array[2])/(2*(self.of[1]-self.of[0]))
-                ddiff_begin = (2*cstr_array[0] -5*cstr_array[1] + 4*cstr_array[2] -cstr_array[3])/np.power((self.of[1]-self.of[0]),2.0)
-                func_extrap = lambda of: diff_begin*(of-self.of.min()) + cstr_array[0]
-                val = func_extrap(of)
-            elif self.of.max()<of:
-                diff_end = (cstr_array[len(cstr_array)-3] -4* cstr_array[len(cstr_array)-2] +3*cstr_array[len(cstr_array)-1])/(2*(self.of[len(self.of)-1]-self.of[len(self.of)-2]))
-                ddiff_end = (-2*cstr_array[len(cstr_array)-4] +4*cstr_array[len(cstr_array)-3] -5*cstr_array[len(cstr_array)-2] +2*cstr_array[len(cstr_array)-1])/np.power(self.of[len(self.of)-1]-self.of[len(self.of)-2], 2.0)
-                func_extrap = lambda of: diff_end*(of-self.of.max()) + cstr_array[len(cstr_array)-1]
-                val = func_extrap(of)
-            else:
-                val = func_interp(of, Pc)[0]
-            return(val)
->>>>>>> 069684d1f78f388fcabae509b367964fb060495b:execute.py
         return(func)
         
     def plot(self, param_name, pickup_num):    
@@ -639,17 +588,7 @@ class Read_datset:
         ax.set_ylabel("${}$".format(param_name))
 
 
-<<<<<<< HEAD:cea_exe.py
-=======
-
-
-
-
->>>>>>> 069684d1f78f388fcabae509b367964fb060495b:execute.py
 if __name__ == "__main__":
     inst = CEA_execute()
     of, Pc, value_c, value_t, value_e, value_rock = inst.all_exe()
-#    cdir = os.path.dirname(os.path.abspath(__file__))
-#    dbfld_path = os.path.join(cdir, "GOX_PE", "csv_database")
-#    inst2 = Read_datset(dbfld_path)
 
