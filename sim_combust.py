@@ -62,8 +62,8 @@ class single_tank():
         try:
             self.tb = optimize.newton(self.func_error_tb, tb_init, maxiter=maxiter)
         except:
-            self.tb = optimize.brentq(self.func_error_tb, tb_min, tb_max, maxiter=maxiter, full_output=False)
-        self.df = pd.DataFrame([], index=np.arange(0, self.tb+self.dt, self.dt))
+            self.tb = optimize.brentq(self.func_error_tb, tb_min, tb_max, maxiter=maxiter, xtol=1.0e+2, full_output=False)
+        self.df = pd.DataFrame([], index=np.arange(0, self.tb+self.dt/2, self.dt))
         self.df["Pc"] = self.Pc
         self.df["mox"] = self.mox
         self.df["Mox"] = self.Mox
@@ -106,14 +106,14 @@ class single_tank():
             eps = np.power(self.De/self._tmp_Dt_, 2.0)
             Pe = self.iterat_Pe(of, Pc, eps)
             gamma = self.func_gamma(of, Pc)
-            if Pe==0:
-                Pe = self.Pa
-            if Pc == 0:
-                Pc = Pe
+#            if Pe==0:
+#                Pe = self.Pa
+#            if Pc <= 0:
+#                Pc = Pe
             CF = np.sqrt((2*np.power(gamma, 2)/(gamma-1))*np.power(2/(gamma+1), (gamma+1)/(gamma-1))*(1-np.power(Pe/Pc,(gamma-1)/gamma))) + (Pe-self.Pa)*eps/Pc
             F = self.lmbd*CF*Pc*np.power(self._tmp_Dt_, 2)
             t = t + self.dt
-#            print("t = {}s".format(round(t,2)))
+            print("t = {}s".format(round(t,3)))
             self.Pe = np.append(self.Pe, Pe)
             self.CF = np.append(self.CF, CF)        
             self.F = np.append(self.F, F)
@@ -138,9 +138,8 @@ class single_tank():
         try:
             Pe = optimize.newton(self.func_error_eps, Pc/2, maxiter=100, args=(of, Pc, eps))
         except:
-            Pe = optimize.brentq(self.func_error_eps, 1, Pc/2, maxiter=100, full_output=False, args=(of, Pc,eps))
-        self.Pe=Pe
-        return(self.Pe)
+            Pe = optimize.brentq(self.func_error_eps, 1, Pc/2, maxiter=100, xtol=1.0e+3, full_output=False, args=(of, Pc,eps))
+        return(Pe)
     
     def func_error_eps(self, Pe, of , Pc, eps):
         eps_cal = self.func_eps_cal(Pe, of, Pc)
@@ -160,11 +159,16 @@ class single_tank():
     
 
     
-    def iterat_Pc(self, t, tb, Pc_min=0.2e+6, maxiter=100):
+
+    def iterat_Pc(self, t, tb, Pc_min=0.2e+6, maxiter=50):
         try:
-            Pc = optimize.newton(self.func_error_Pc, self.Pti, maxiter=maxiter, args=(t,tb))        
+            if t == 0:
+                Pc_init = self.Pc_init
+            else:
+                Pc_init = self.Pc[-1]
+            Pc = optimize.newton(self.func_error_Pc, Pc_init, maxiter=100, tol=1.0e-2, args=(t,tb))
         except:
-            Pc = optimize.brentq(self.func_error_Pc, Pc_min, self.Pti, maxiter=maxiter, args=(t,tb))
+            Pc = optimize.brentq(self.func_error_Pc, Pc_min, self.Pti, xtol=1.0e-2, maxiter=maxiter, args=(t,tb))
         self.Pc = np.append(self.Pc, Pc)
         self.mox = np.append(self.mox, self._tmp_mox_)
         self.Mox = np.append(self.Mox, self._tmp_Mox_)
@@ -353,7 +357,8 @@ class double_tank(single_tank):
         
 
 if __name__ == "__main__":
-    cea_fldpath = os.path.join("cea_db", "N2O_PE", "csv_database")
+#    cea_fldpath = os.path.join("cea_db", "N2O_PE", "csv_database")
+    cea_fldpath = os.path.join("cea_db", "GOX_PE", "csv_database")
     dt = 0.01 # time interval [s]
     tb_init = 2.8 # initial firing duration time for iteration [s]
     Pc_init = 1.3e+6 # initial chamber pressure for iteration [Pa]
