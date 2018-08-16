@@ -12,8 +12,8 @@ from scipy import optimize
 from cea_post import Read_datset
 from tqdm import tqdm
 
-class Main():
-    """ Simulate combustion of hybrid rocket
+class single_tank():
+    """ Simulate combustion of hybrid rocket assuming single tank and liquid phase oxidizer flow
     
     Parameter
     ---------
@@ -43,7 +43,12 @@ class Main():
         self.lmbd = (1 + np.cos( np.deg2rad(theta) ))/2 # nozzle coefficient. theta is nozzle opening half-angle [rad]
         self.func_cstr = Read_datset(cea_fldpath).gen_func("CSTAR")
         self.func_gamma = Read_datset(cea_fldpath).gen_func("GAMMAs_c")
+
+    def exe_sim(self):
+        """ Execute simulation
+        """
         self.iterat_tb(tb_init=self.tb_init, tb_min=1.0, tb_max=10.0, maxiter=100)
+        return(self.df)
 
     def iterat_tb(self, tb_init=5.0, tb_min=1.0, tb_max=10, maxiter=100):
         """ Iteration of tb: firing duration time
@@ -55,9 +60,9 @@ class Main():
         --------
         """
         try:
-            self.tb = optimize.newton(self.func_error_tb, tb_init, maxiter=maxiter, tol=1.0e+2)
+            self.tb = optimize.newton(self.func_error_tb, tb_init, maxiter=maxiter)
         except:
-            self.tb = optimize.brentq(self.func_error_tb, tb_min, tb_max, maxiter=maxiter, xtol=1.0e+2, full_output=False)
+            self.tb = optimize.brentq(self.func_error_tb, tb_min, tb_max, maxiter=maxiter, full_output=False)
         self.df = pd.DataFrame([], index=np.arange(0, self.tb+self.dt, self.dt))
         self.df["Pc"] = self.Pc
         self.df["mox"] = self.mox
@@ -93,6 +98,7 @@ class Main():
         self.CF = np.array([])
         self.F = np.array([])
         self._tmp_Mox_ = 0
+        pbar = tqdm(total=int(tb/self.dt))
         t = 0
         while(self._tmp_Mox_ <= self.Mox_fill):
             Pc = self.iterat_Pc(t, tb)
@@ -107,10 +113,11 @@ class Main():
             CF = np.sqrt((2*np.power(gamma, 2)/(gamma-1))*np.power(2/(gamma+1), (gamma+1)/(gamma-1))*(1-np.power(Pe/Pc,(gamma-1)/gamma))) + (Pe-self.Pa)*eps/Pc
             F = self.lmbd*CF*Pc*np.power(self._tmp_Dt_, 2)
             t = t + self.dt
-            print("t = {}s".format(t))
+#            print("t = {}s".format(round(t,2)))
             self.Pe = np.append(self.Pe, Pe)
             self.CF = np.append(self.CF, CF)        
             self.F = np.append(self.F, F)
+            pbar.update(1)
         tb = t - self.dt
         self.I = integrate.simps(self.F, np.arange(0,tb+self.dt/2, self.dt))
         return(tb)
@@ -129,9 +136,9 @@ class Main():
         if of<=0:
             of = 1.0e-2
         try:
-            Pe = optimize.newton(self.func_error_eps, Pc/2, maxiter=100, tol=1.0e+3, args=(of, Pc, eps))
+            Pe = optimize.newton(self.func_error_eps, Pc/2, maxiter=100, args=(of, Pc, eps))
         except:
-            Pe = optimize.brentq(self.func_error_eps, 1, Pc/2, maxiter=100, xtol=1.0e+3, full_output=False, args=(of, Pc,eps))
+            Pe = optimize.brentq(self.func_error_eps, 1, Pc/2, maxiter=100, full_output=False, args=(of, Pc,eps))
         self.Pe=Pe
         return(self.Pe)
     
@@ -153,8 +160,11 @@ class Main():
     
 
     
-    def iterat_Pc(self, t, tb, Pc_min=0.2e+6, maxiter=50):
-        Pc = optimize.brentq(self.func_error_Pc, Pc_min, self.Pti, xtol=1.0e-2, maxiter=maxiter, args=(t,tb))        
+    def iterat_Pc(self, t, tb, Pc_min=0.2e+6, maxiter=100):
+        try:
+            Pc = optimize.newton(self.func_error_Pc, self.Pti, maxiter=maxiter, args=(t,tb))        
+        except:
+            Pc = optimize.brentq(self.func_error_Pc, Pc_min, self.Pti, maxiter=maxiter, args=(t,tb))
         self.Pc = np.append(self.Pc, Pc)
         self.mox = np.append(self.mox, self._tmp_mox_)
         self.Mox = np.append(self.Mox, self._tmp_Mox_)
@@ -316,8 +326,31 @@ class Main():
         return(Mox)
     
 
-    
-
+class double_tank(single_tank):
+    def __init__(self, cea_fldpath, dt, tb_init, Pc_init, eta, Pti, Vox, Do, Cd, Lf, Dfi, rho_ox, rho_f, Dti, De, Pa, rn, theta):
+        self.dt = dt # time interval [s]
+        self.tb_init = tb_init # initial firing duration time for iteration [s]
+        self.Pc_init = Pc_init # initial chamber pressure for iteration [Pa]
+        self.eta = eta
+        self.Pti = Pti # initial tank pressure [Pa]
+#        self.Ptf = Ptf # final tank pressure [Pa]
+        self.Vox = Vox # oxidizer volume [m^3]
+        self.Do = Do
+        self.Cd = Cd
+        self.Lf = Lf # fuel length [m]
+        self.Dfi = Dfi # initial fuel port diameter [m]
+        self.rho_ox = rho_ox
+        self.rho_f = rho_f
+        self.Mox_fill = Vox*rho_ox # total oxidizer mass [kg]
+        self.Dti = Dti # initial nozzle throat diameter [m]
+        self.De = De # nozzle exit diameter [m]
+        self.Pa = Pa # ambient pressure [Pa]
+        self.rn = rn # nozzle throat regression rate [m]
+        self.lmbd = (1 + np.cos( np.deg2rad(theta) ))/2 # nozzle coefficient. theta is nozzle opening half-angle [rad]
+        self.func_cstr = Read_datset(cea_fldpath).gen_func("CSTAR")
+        self.func_gamma = Read_datset(cea_fldpath).gen_func("GAMMAs_c")
+        
+        
 
 if __name__ == "__main__":
     cea_fldpath = os.path.join("cea_db", "N2O_PE", "csv_database")
@@ -326,7 +359,7 @@ if __name__ == "__main__":
     Pc_init = 1.3e+6 # initial chamber pressure for iteration [Pa]
     eta = 0.8
     Pti = 4.8e+6 # initial tank pressure [Pa]
-    Ptf = 2.6e+6 # final tank pressure [Pa]
+    Ptf = 2.0e+6 # final tank pressure [Pa]
     Vox = 440e-6 # oxidizer volume [m^3]
     Do = 3.0e-3
     Cd = 0.333
@@ -339,6 +372,9 @@ if __name__ == "__main__":
     Pa = 0.1013e-6 # ambient pressure [Pa]
     rn = 0.0 # nozzle throat regression rate [m]
     theta = 15 # nozzle opening half-angle [deg]
-    
-    inst = Main(cea_fldpath, dt, tb_init, Pc_init, eta, Pti, Ptf, Vox, Do, Cd, Lf, Dfi, rho_ox, rho_f, Dti, De, Pa, rn, theta)
+
+    inst = single_tank(cea_fldpath, dt, tb_init, Pc_init, eta, Pti, Ptf, Vox, Do, Cd, Lf, Dfi, rho_ox, rho_f, Dti, De, Pa, rn, theta)
+    data = inst.exe_sim()    
+#    inst = double_tank(cea_fldpath, dt, tb_init, Pc_init, eta, Pti, Vox, Do, Cd, Lf, Dfi, rho_ox, rho_f, Dti, De, Pa, rn, theta)
+
     
