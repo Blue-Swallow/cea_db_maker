@@ -12,7 +12,7 @@ from scipy import optimize
 from cea_post import Read_datset
 from tqdm import tqdm
 
-class Main():
+class Single_tank():
     """ Simulate combustion of hybrid rocket
     
     Parameter
@@ -59,7 +59,12 @@ class Main():
         self.CF = np.array([])
         self.F = np.array([])
         self.I = np.array([])
-        self.iterat_tb(tb_init=self.tb_init, tb_min=1.0, tb_max=10.0, maxiter=100)
+        
+    def exe_sim(self):
+        """ Execute Simulation
+        """
+        self.iterat_tb(tb_init=self.tb_init, tb_min=1.0, tb_max=10.0, maxiter=100)        
+
 
     def iterat_tb(self, tb_init=5.0, tb_min=1.0, tb_max=10, maxiter=100):
         """ Iteration of tb: firing duration time
@@ -361,8 +366,31 @@ class Main():
             Mox = integrate.simps(tmp_mox, t_list)
             self._tmp_Mox_ = Mox
         return(Mox)
-    
 
+
+class Double_tank(Single_tank):
+    def __init__(self, cea_fldpath, dt, tb_init, Pc_init, eta, Pti, Vox, Do, Cd, Lf, Dfi, rho_ox, rho_f, Dti, De, Pa, rn, theta):
+        self.dt = dt # time interval [s]
+        self.tb_init = tb_init # initial firing duration time for iteration [s]
+        self.Pc_init = Pc_init # initial chamber pressure for iteration [Pa]
+        self.eta = eta
+        self.Pti = Pti # initial tank pressure [Pa]
+#        self.Ptf = Ptf # final tank pressure [Pa]
+        self.Vox = Vox # oxidizer volume [m^3]
+        self.Do = Do
+        self.Cd = Cd
+        self.Lf = Lf # fuel length [m]
+        self.Dfi = Dfi # initial fuel port diameter [m]
+        self.rho_ox = rho_ox
+        self.rho_f = rho_f
+        self.Mox_fill = Vox*rho_ox # total oxidizer mass [kg]
+        self.Dti = Dti # initial nozzle throat diameter [m]
+        self.De = De # nozzle exit diameter [m]
+        self.Pa = Pa # ambient pressure [Pa]
+        self.rn = rn # nozzle throat regression rate [m]
+        self.lmbd = (1 + np.cos( np.deg2rad(theta) ))/2 # nozzle coefficient. theta is nozzle opening half-angle [rad]
+        self.func_cstr = Read_datset(cea_fldpath).gen_func("CSTAR")
+        self.func_gamma = Read_datset(cea_fldpath).gen_func("GAMMAs_c")
     
 
 
@@ -388,5 +416,7 @@ if __name__ == "__main__":
     rn = 0.0 # nozzle throat regression rate [m]
     theta = 15 # nozzle opening half-angle [deg]
     
-    inst = Main(cea_fldpath, dt, tb_init, Pc_init, eta, Pti, Ptf, Vox, Do, Cd, Lf, Dfi, rho_ox, rho_f, Dti, De, Pa, rn, theta)
+    inst = Single_tank(cea_fldpath, dt, tb_init, Pc_init, eta, Pti, Ptf, Vox, Do, Cd, Lf, Dfi, rho_ox, rho_f, Dti, De, Pa, rn, theta)
+    inst.exe_sim()
     dat = inst.df
+#    inst = double_tank(cea_fldpath, dt, tb_init, Pc_init, eta, Pti, Vox, Do, Cd, Lf, Dfi, rho_ox, rho_f, Dti, De, Pa, rn, theta)
