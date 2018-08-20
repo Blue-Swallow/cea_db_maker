@@ -114,6 +114,7 @@ class Main():
         self.I = np.array([])
         self._tmp_Mox_ = 0
         t = 0
+        pbar = tqdm(total=tb/self.dt)
         while(self._tmp_Mox_ <= self.Mox_fill):
             Pc = self.iterat_Pc(t, tb)
             of = self._tmp_of_
@@ -133,7 +134,8 @@ class Main():
             I = integrate.simps(self.F, t_list)
             self.I = np.append(self.I, I)
             t = t + self.dt
-            print("t = {}s".format(round(t,3)))            
+#            print("t = {}s".format(round(t,3)))
+            pbar.update(1) # show the progress bar
         tb = t - self.dt
         return(tb)
         
