@@ -22,6 +22,7 @@ class Main():
     ---------
     """
     def __init__(self, cea_fldpath, dt, tb_init, Pc_init, eta, Pti, Ptf, Vox, Do, Cd, Lf, Dfi, rho_ox, rho_f, Dti, De, Pa, rn, theta):
+        self.cea_fldpath = cea_fldpath
         self.dt = dt # time interval [s]
         self.tb_init = tb_init # initial firing duration time for iteration [s]
         self.Pc_init = Pc_init # initial chamber pressure for iteration [Pa]
@@ -43,6 +44,21 @@ class Main():
         self.lmbd = (1 + np.cos( np.deg2rad(theta) ))/2 # nozzle coefficient. theta is nozzle opening half-angle [rad]
         self.func_cstr = Read_datset(cea_fldpath).gen_func("CSTAR")
         self.func_gamma = Read_datset(cea_fldpath).gen_func("GAMMAs_c")
+        self.of_max = Read_datset(cea_fldpath).of.max()
+        self.Pc = np.array([])
+        self.Pt = np.array([])        
+        self.mox = np.array([])
+        self.Mox = np.array([])
+        self.Mf = np.array([])
+        self.Df = np.array([])
+        self.Gox = np.array([])
+        self.r = np.array([])
+        self.Dt = np.array([])        
+        self.mf = np.array([])
+        self.Pe = np.array([])
+        self.CF = np.array([])
+        self.F = np.array([])
+        self.I = np.array([])
         self.iterat_tb(tb_init=self.tb_init, tb_min=1.0, tb_max=10.0, maxiter=100)
 
     def iterat_tb(self, tb_init=5.0, tb_min=1.0, tb_max=10, maxiter=100):
@@ -55,11 +71,12 @@ class Main():
         --------
         """
         try:
-            self.tb = optimize.newton(self.func_error_tb, tb_init, maxiter=maxiter, tol=1.0e+2)
+            self.tb = optimize.newton(self.func_error_tb, tb_init, maxiter=maxiter, tol=1.0e-2)
         except:
-            self.tb = optimize.brentq(self.func_error_tb, tb_min, tb_max, maxiter=maxiter, xtol=1.0e+2, full_output=False)
+            self.tb = optimize.brentq(self.func_error_tb, tb_min, tb_max, maxiter=maxiter, xtol=1.0e-2, full_output=False)
         self.df = pd.DataFrame([], index=np.arange(0, self.tb+self.dt/2, self.dt))
         self.df["Pc"] = self.Pc
+        self.df["Pt"] = self.Pt        
         self.df["mox"] = self.mox
         self.df["Mox"] = self.Mox
         self.df["mf"] = self.mf
@@ -70,7 +87,8 @@ class Main():
         self.df["Dt"] = self.Dt
         self.df["Pe"] = self.Pe
         self.df["CF"] = self.CF
-        self.df["F"] = self.F        
+        self.df["F"] = self.F
+        self.df["I"] = self.I
         return(self.df)
     
     def func_error_tb(self, tb):
@@ -81,6 +99,7 @@ class Main():
         
     def func_tb(self, tb):
         self.Pc = np.array([])
+        self.Pt = np.array([])
         self.mox = np.array([])
         self.Mox = np.array([])
         self.Mf = np.array([])
@@ -92,6 +111,7 @@ class Main():
         self.Pe = np.array([])
         self.CF = np.array([])
         self.F = np.array([])
+        self.I = np.array([])
         self._tmp_Mox_ = 0
         t = 0
         while(self._tmp_Mox_ <= self.Mox_fill):
@@ -100,19 +120,21 @@ class Main():
             eps = np.power(self.De/self._tmp_Dt_, 2.0)
             Pe = self.iterat_Pe(of, Pc, eps)
             gamma = self.func_gamma(of, Pc)
-#            if Pe==0:
-#                Pe = self.Pa
-#            if Pc <= 0:
-#                Pc = Pe
+            if Pe==0:
+                Pe = self.Pa
+            if Pc <= 0:
+                Pc = Pe
             CF = np.sqrt((2*np.power(gamma, 2)/(gamma-1))*np.power(2/(gamma+1), (gamma+1)/(gamma-1))*(1-np.power(Pe/Pc,(gamma-1)/gamma))) + (Pe-self.Pa)*eps/Pc
             F = self.lmbd*CF*Pc*np.power(self._tmp_Dt_, 2)
-            t = t + self.dt
-            print("t = {}s".format(round(t,3)))
             self.Pe = np.append(self.Pe, Pe)
             self.CF = np.append(self.CF, CF)        
             self.F = np.append(self.F, F)
+            t_list = np.arange(0, t+self.dt/2, self.dt)
+            I = integrate.simps(self.F, t_list)
+            self.I = np.append(self.I, I)
+            t = t + self.dt
+            print("t = {}s".format(round(t,3)))            
         tb = t - self.dt
-        self.I = integrate.simps(self.F, np.arange(0,tb+self.dt/2, self.dt))
         return(tb)
         
         
@@ -170,23 +192,27 @@ class Main():
         self.r = np.append(self.r, self._tmp_r)
         self.mf = np.append(self.mf, self._tmp_mf_)
         self.Dt = np.append(self.Dt, self._tmp_Dt_)
+        self.Pt = np.append(self.Pt, self._tmp_Pt_)
         return(Pc)
 
         
     def func_error_Pc(self, Pc, t, tb):
         Pc_cal = self.func_Pc(Pc, t, tb)
-        diff = Pc_cal - Pc
+        diff = Pc - Pc_cal
         error = diff/Pc_cal
-        self.Pc_pre = Pc_cal
         return(error)
     
     def func_Pc(self, Pc, t, tb):
         mox = self.func_mox(t, Pc, tb)
         mf = self.func_mf(t, mox)
-        if mf == 0:
+        if mf == 0 and mox>0:
+            of = self.of_max
+        elif mox==0 and mox==0:
             of = 0
         else:
             of = mox/mf
+        if of > self.of_max:
+            of = self.of_max
         self._tmp_of_ = of
         cstr = self.eta*self.func_cstr(of, Pc)
         At = self.func_At(t)
@@ -246,6 +272,8 @@ class Main():
         if t == 0:
             Mf = 0
         else:
+#            tmp_mf = np.append(self.mf, mf)
+#            Mf = integrate.simps(tmp_mf, t_list)
             Mf = integrate.simps(self.mf, t_list)
         self._tmp_Mf_ = Mf
         return(Mf)
@@ -271,12 +299,10 @@ class Main():
             camber pressure [Pa]
         """
         Pt = self.func_Pt(t, tb)
-        Mox =self.func_Mox(t)
-        if Mox <= self.Mox_fill:
-            mox = self.Cd*(np.pi*np.power(self.Do, 2)/4)*np.sqrt(2*self.rho_ox*(Pt-Pc))   
-        else:
-            mox = 0
+        mox = self.Cd*(np.pi*np.power(self.Do, 2)/4)*np.sqrt(2*self.rho_ox*(Pt-Pc))
+        Mox =self.func_Mox(t, mox) # calculate total oxidizer mass flow
         self._tmp_mox_ = mox
+#        self.mox = np.append(self.mox, self._tmp_mox)
         return(mox)
 
     def func_Pt(self, t, tb):
@@ -295,10 +321,11 @@ class Main():
             tank pressure at t [s], [Pa]
         """
         Pt = (self.Ptf - self.Pti)*t/tb + self.Pti # assuming linear changing on tank pressure
+        self._tmp_Pt_ = Pt
         return(Pt)
 
 
-    def func_Mox(self, t):
+    def func_Mox(self, t, mox):
         """ Calculate total oxidizer mass Mox
         
         Paratmeter
@@ -316,8 +343,9 @@ class Main():
         if t==0:
             Mox = 0
         else:
-            t_list = np.arange(0, t-self.dt/2, self.dt)
-            Mox = integrate.simps(self.mox, t_list)
+            t_list = np.arange(0, t+self.dt/2, self.dt)
+            tmp_mox = np.append(self.mox, mox)
+            Mox = integrate.simps(tmp_mox, t_list)
             self._tmp_Mox_ = Mox
         return(Mox)
     
@@ -329,11 +357,11 @@ if __name__ == "__main__":
 #    cea_fldpath = os.path.join("cea_db", "N2O_PE", "csv_database")
     cea_fldpath = os.path.join("cea_db", "GOX_PE", "csv_database")
     dt = 0.01 # time interval [s]
-    tb_init = 2.8 # initial firing duration time for iteration [s]
+    tb_init = 2.0 # initial firing duration time for iteration [s]
     Pc_init = 1.3e+6 # initial chamber pressure for iteration [Pa]
     eta = 0.8
     Pti = 4.8e+6 # initial tank pressure [Pa]
-    Ptf = 2.6e+6 # final tank pressure [Pa]
+    Ptf = 2.0e+6 # final tank pressure [Pa]
     Vox = 440e-6 # oxidizer volume [m^3]
     Do = 3.0e-3
     Cd = 0.333
@@ -348,4 +376,4 @@ if __name__ == "__main__":
     theta = 15 # nozzle opening half-angle [deg]
     
     inst = Main(cea_fldpath, dt, tb_init, Pc_init, eta, Pti, Ptf, Vox, Do, Cd, Lf, Dfi, rho_ox, rho_f, Dti, De, Pa, rn, theta)
-    
+    dat = inst.df
