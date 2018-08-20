@@ -55,6 +55,8 @@ class Single_tank():
         self.r = np.array([])
         self.Dt = np.array([])        
         self.mf = np.array([])
+        self.cstr = np.array([])
+        self.of = np.array([])
         self.Pe = np.array([])
         self.CF = np.array([])
         self.F = np.array([])
@@ -93,6 +95,8 @@ class Single_tank():
         self.df["Dt"] = self.Dt
         self.df["Pe"] = self.Pe
         self.df["CF"] = self.CF
+        self.df["cstr"] = self.cstr
+        self.df["of"] = self.of
         self.df["F"] = self.F
         self.df["I"] = self.I
         return(self.df)
@@ -126,6 +130,8 @@ class Single_tank():
         self.mf = np.array([])
         self.Pe = np.array([])
         self.CF = np.array([])
+        self.cstr = np.array([])
+        self.of = np.array([])
         self.F = np.array([])
         self.I = np.array([])
         self._tmp_Mox_ = 0
@@ -202,6 +208,8 @@ class Single_tank():
         except:
             Pc = optimize.brentq(self.func_error_Pc, Pc_min, self.Pti, xtol=1.0e-3, maxiter=maxiter, args=(t,tb))
         self.Pc = np.append(self.Pc, Pc)
+        self.of = np.append(self.of, self._tmp_of_)
+        self.cstr = np.append(self.cstr, self._tmp_cstr_)
         self.mox = np.append(self.mox, self._tmp_mox_)
         self.Mox = np.append(self.Mox, self._tmp_Mox_)
         self.Mf = np.append(self.Mf, self._tmp_Mf_)
@@ -233,6 +241,7 @@ class Single_tank():
             of = self.of_max
         self._tmp_of_ = of
         cstr = self.eta*self.func_cstr(of, Pc)
+        self._tmp_cstr_ = cstr
         At = self.func_At(t)
         Pc_cal = cstr*(mox + mf)/At
         return(Pc_cal)
