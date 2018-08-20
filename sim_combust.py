@@ -70,10 +70,11 @@ class Main():
         Return
         --------
         """
+        self.num_iterat_tb = 0
         try:
-            self.tb = optimize.newton(self.func_error_tb, tb_init, maxiter=maxiter, tol=1.0e-2)
+            self.tb = optimize.newton(self.func_error_tb, tb_init, tol= 1.0e-2,maxiter=maxiter)
         except:
-            self.tb = optimize.brentq(self.func_error_tb, tb_min, tb_max, maxiter=maxiter, xtol=1.0e-2, full_output=False)
+            self.tb = optimize.brentq(self.func_error_tb, tb_min, tb_max, xtol=1.0e-2, maxiter=maxiter, full_output=False)
         self.df = pd.DataFrame([], index=np.arange(0, self.tb+self.dt/2, self.dt))
         self.df["Pc"] = self.Pc
         self.df["Pt"] = self.Pt        
@@ -92,6 +93,16 @@ class Main():
         return(self.df)
     
     def func_error_tb(self, tb):
+        self.num_iterat_tb += 1
+        if self.num_iterat_tb == 1:
+            ordinal = "st"
+        elif self.num_iterat_tb == 2:
+            ordinal = "nd"
+        elif self.num_iterat_tb == 3:
+            ordinal = "rd"
+        else:
+            ordinal = "th"
+        print("{}".format(self.num_iterat_tb) + ordinal +" iteration about firing duration time; tb.")
         tb_cal = self.func_tb(tb)
         diff = tb_cal - tb
         error = diff/tb_cal
@@ -153,9 +164,9 @@ class Main():
         if of<=0:
             of = 1.0e-2
         try:
-            Pe = optimize.newton(self.func_error_eps, Pc/2, maxiter=100, tol=1.0e+3, args=(of, Pc, eps))
+            Pe = optimize.newton(self.func_error_eps, Pc/2, maxiter=100, tol=1.0e-3, args=(of, Pc, eps))
         except:
-            Pe = optimize.brentq(self.func_error_eps, 1, Pc/2, maxiter=100, xtol=1.0e+3, full_output=False, args=(of, Pc,eps))
+            Pe = optimize.brentq(self.func_error_eps, 1, Pc/2, maxiter=100, xtol=1.0e-3, full_output=False, args=(of, Pc,eps))
         return(Pe)
     
     def func_error_eps(self, Pe, of , Pc, eps):
@@ -171,20 +182,20 @@ class Main():
         if Pc == 0:
             Pc = Pe
         eps_cal = np.power((2/(gam+1)), 1/(gam-1)) * np.power(Pc/Pe, 1/gam) / np.sqrt((gam+1)/(gam-1)*(1-np.power(Pe/Pc, (gam-1)/gam)))
-        return(eps_cal)    
+        return(eps_cal)
 
     
 
     
-    def iterat_Pc(self, t, tb, Pc_min=0.2e+6, maxiter=50):
+    def iterat_Pc(self, t, tb, Pc_min=0.2e+6, maxiter=100):
         try:
             if t == 0:
                 Pc_init = self.Pc_init
             else:
                 Pc_init = self.Pc[-1]
-            Pc = optimize.newton(self.func_error_Pc, Pc_init, maxiter=100, tol=1.0e-2, args=(t,tb))
+            Pc = optimize.newton(self.func_error_Pc, Pc_init, maxiter=maxiter, tol=1.0e-3, args=(t,tb))
         except:
-            Pc = optimize.brentq(self.func_error_Pc, Pc_min, self.Pti, xtol=1.0e-2, maxiter=maxiter, args=(t,tb))
+            Pc = optimize.brentq(self.func_error_Pc, Pc_min, self.Pti, xtol=1.0e-3, maxiter=maxiter, args=(t,tb))
         self.Pc = np.append(self.Pc, Pc)
         self.mox = np.append(self.mox, self._tmp_mox_)
         self.Mox = np.append(self.Mox, self._tmp_Mox_)
