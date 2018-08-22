@@ -378,20 +378,40 @@ class Single_tank():
 
 
 class Double_tank(Single_tank):
-    def __init__(self, cea_fldpath, dt, tb_init, Pc_init, eta, Pti, Vox, Do, Cd, Lf, Dfi, rho_ox, rho_f, Dti, De, Pa, rn, theta):
+    """ Class to simulate when the system has pressurize gas tank
+    
+    Parameter
+    ----------    
+    zeta: float
+        combined pressure loss coefficient.  
+        For example:
+        in the case of inlet of pipe, the coefficient is 0.5 but it depends on inlet shape;
+        in the case of outlet of pipe, the coefficient is nearly equal to 1.0;
+        in the case of elbow, the coefficient is 1.129. 
+    """
+    
+    def __init__(self, cea_fldpath, dt, tb_init, Pc_init, eta, Pti, Pgi, Vox, Vg, Do, Cd, Lf, Dfi, rho_ox, rho_f, rho_g, mu_g, Dpg, Lpg, eps, zeta, Dti, De, Pa, rn, theta):
         self.dt = dt # time interval [s]
         self.tb_init = tb_init # initial firing duration time for iteration [s]
         self.Pc_init = Pc_init # initial chamber pressure for iteration [Pa]
         self.eta = eta
         self.Pti = Pti # initial tank pressure [Pa]
 #        self.Ptf = Ptf # final tank pressure [Pa]
+        self.Pgi = Pgi # initial gass tank pressure [Pa]
         self.Vox = Vox # oxidizer volume [m^3]
+        self.Vg = Vg # pressurigze gass tank volume [m^3]
         self.Do = Do
         self.Cd = Cd
         self.Lf = Lf # fuel length [m]
         self.Dfi = Dfi # initial fuel port diameter [m]
         self.rho_ox = rho_ox
         self.rho_f = rho_f
+        self.rho_g = rho_g # density of pressurize gas [kg/m^3]
+        self.mu_g = mu_g # viscosity of pressurize gas [Pa-s]
+        self.Dpg = Dpg # pipe diameter of pressurize gas [m]
+        self.Lpg = Lpg # straight pipe length [m]
+        self.eps = eps # equivalent sand roughness [m]
+        self.zeta = zeta # combined pressure loss coefficient
         self.Mox_fill = Vox*rho_ox # total oxidizer mass [kg]
         self.Dti = Dti # initial nozzle throat diameter [m]
         self.De = De # nozzle exit diameter [m]
@@ -400,7 +420,123 @@ class Double_tank(Single_tank):
         self.lmbd = (1 + np.cos( np.deg2rad(theta) ))/2 # nozzle coefficient. theta is nozzle opening half-angle [rad]
         self.func_cstr = Read_datset(cea_fldpath).gen_func("CSTAR")
         self.func_gamma = Read_datset(cea_fldpath).gen_func("GAMMAs_c")
+        self.of_max = Read_datset(cea_fldpath).of.max()
+
+
+    def func_Pc(self, Pc, t, tb):
+        rho_g = self.rho_g
+        mu_g = self.mu_g
+        Pg = self.iterat_Pg(Pc, rho_g, mu_g)
+        Vol_ox = self.iterat_Vol_ox(Pg, mu_g, rho_g)
+        Pt = Pg - self.func_dPg(Vol_ox, rho_g, mu_g)
+        self._tmp_Pt_ = Pt
+        mox = self.func_mox(Pg, Pc, Vol_ox, rho_g, mu_g)
+        Mox =self.func_Mox(t, mox) # calculate total oxidizer mass flow
+        mf = self.func_mf(t,mox)
+        if mf == 0 and mox>0:
+            of = self.of_max
+        elif mox==0 and mox==0:
+            of = 0
+        else:
+            of = mox/mf
+        if of > self.of_max:
+            of = self.of_max
+        self._tmp_of_ = of
+        cstr = self.eta*self.func_cstr(of, Pc)
+        self._tmp_cstr_ = cstr
+        At = self.func_At(t)
+        Pc_cal = cstr*(mox + mf)/At
+        return(Pc_cal)
+
+
+    def iterat_Pg(self, Pc, rho_g, mu_g):
+        """ Iteration of gas tank pressure [Pa]
+        """
+        Pg = optimize.newton(self.func_error_mox, 5.0e+6, args=(Pc, rho_g, mu_g))
+        return(Pg)
+        
+    def func_error_mox(self, Pg, Pc, rho_g, mu_g):
+        Vol_ox = self.iterat_Vol_ox(Pg, mu_g, rho_g)
+        mox = self.rho_ox*Vol_ox/self.dt
+        mox_cal = self.func_mox(Pg, Pc, Vol_ox, rho_g, mu_g)
+        diff = mox_cal - mox
+        error = diff/mox_cal
+        return(error)
+
+    def func_mox(self, Pg, Pc, Vol_g, rho_g, mu_g):
+        dPg = self.func_dPg(Vol_g, rho_g, mu_g)
+        mox = self.Cd*(np.pi*np.power(self.Do, 2)/4)*np.sqrt(2*self.rho_ox*((Pg-dPg) - Pc))
+        self._tmp_mox_ = mox
+        return(mox)
+
+    def iterat_Vol_ox(self, Pg, mu_g, rho_g):
+        """ Iteration of Vox: oxidizer volume flow rate [m^3/s]
+        """
+#        Vol_ox = optimize.brentq(self.func_error_Vol_ox)
+        Vol_ox = optimize.newton(self.func_error_Vol_ox, 1.0e-3, args=(Pg, mu_g, rho_g))
+        return(Vol_ox)
+        
+    def func_error_Vol_ox(self, Vol_ox, Pg, mu_g, rho_g):
+        Vol_ox_cal = self.func_Vol_ox(Vox, Pg, mu_g, rho_g)
+        diff = Vol_ox_cal - Vol_ox
+        error = diff/Vol_ox_cal
+        return(error)
+        
+    def func_Vol_ox(self, Vol_ox, Pg, mu_g, rho_g):
+        """ Calculate the oxidize volume flow rate in dt [m^3]
+        
+        Parameter
+        ---------
+        Vol_ox: float
+            oxidizer volume flow rate in dt [m^3]
+        Pg: float
+            gas tank pressure [Pa]
+        mu_g: float
+            viscosity of pressurize gas [Pa-s]
+        rho_g: float
+            density of pressurize gas [kg/m^3]
+        """
+        Vol_g = Vol_ox # pressurize gas volume in dt; that is equal to oxidizer volume in dt
+        dPg = self.func_dPg(Vol_g, rho_g, mu_g) # pressure loss throug pipe
+        Vol_ox_cal = (self.Pgi - Pg)*self.Vg/(Pg - dPg) # assuming isothermal changing *This should considers isentropic condition?.
+        return(Vol_ox_cal)
     
+    def func_dPg(self, Vol_g, rho_g, mu_g):
+        """ Calculate the pressure loss of pressurize gas
+        
+        Parameter
+        ----------
+        Vol_ox: float
+            oxidizer volume flow rate in dt [m^3]
+        mu_g: float
+            viscosity of pressurize gas [Pa-s]
+        rho_g: float
+            density of pressurize gas [kg/m^3]
+        """
+        Ap = np.pi*np.power(self.Dpg, 2)/4 # closs section area of pressurize gas pipe [m^2]
+        ug = Vol_g/(Ap*self.dt) # gas velocity in the pipe
+        dP_zeta = self.zeta*rho_g*np.power(ug,2) # pressure loss of inlet, outlet and bended tube etc...
+        Re_g = rho_g*ug*self.Dpg/mu_g
+        if Re_g > 4000: # turbulent flow
+            lmbd = optimize.newton(self._func_lmbd_, 0.03, args=(Re_g,))
+        else: # laminar flow
+            lmbd = 64/Re_g
+        dP_pipe = lmbd*self.Lpg/(2*self.Dpg) * rho_g*np.power(ug,2) # pressure loss through straight pipe
+        return(dP_zeta + dP_pipe)
+        
+    
+    def _func_lmbd_(self, lmbd, Re_g):
+        """ Iterate calculation of pipe friction factor: lmbd, using Cole-brook empirical formula
+        
+        Parameter
+        ------------
+        lmbd: float
+            pipe friction factor
+        Re_g: float
+            Reynolds number of pressurzie gas in the pipe
+        """
+        ans = 1/np.sqrt(lmbd) + 2*np.log10(self.eps/(3.71*self.Dpg) + 2.51/(Re_g*np.sqrt(lmbd)))
+        return(ans)
 
 
 if __name__ == "__main__":
@@ -425,7 +561,18 @@ if __name__ == "__main__":
     rn = 0.0 # nozzle throat regression rate [m]
     theta = 15 # nozzle opening half-angle [deg]
     
-    inst = Single_tank(cea_fldpath, dt, tb_init, Pc_init, eta, Pti, Ptf, Vox, Do, Cd, Lf, Dfi, rho_ox, rho_f, Dti, De, Pa, rn, theta)
-    inst.exe_sim()
-    dat = inst.df
-#    inst = double_tank(cea_fldpath, dt, tb_init, Pc_init, eta, Pti, Vox, Do, Cd, Lf, Dfi, rho_ox, rho_f, Dti, De, Pa, rn, theta)
+#    inst = Single_tank(cea_fldpath, dt, tb_init, Pc_init, eta, Pti, Ptf, Vox, Do, Cd, Lf, Dfi, rho_ox, rho_f, Dti, De, Pa, rn, theta)
+#    inst.exe_sim()
+#    dat = inst.df
+    
+    Pgi = 5.0e+6 # initial gas tank pressure [Pa]
+    Vg = 1.0e-3 # pressurize gas tank volume [m^3]
+    rho_g = 0.1786 # pressurize gas density [kg/m^3]
+    mu_g = 0.0186e-3 # pressurize gas viscosity [Pa-s]
+    Dpg = (25.4/4)*1.0e-3 # pipe diameter of pressurize gas [m]
+    Lpg = 200e-3 # straight pipe length [m]
+    eps = 0.0015e-3 # equivalent sand roughness [m]
+    zeta = 0.25 # combined pressure loss coefficient
+    inst2 = Double_tank(cea_fldpath, dt, tb_init, Pc_init, eta, Pti, Pgi, Vox, Vg, Do, Cd, Lf, Dfi, rho_ox, rho_f, rho_g, mu_g, Dpg, Lpg, eps, zeta, Dti, De, Pa, rn, theta)
+    inst2.exe_sim()
+    dat2 = inst2.df

@@ -9,6 +9,7 @@ Pc*.csv
 .*
 _*
 build
+dist
 cea_db/*
 !cea_db/sample
 exp_dat/*
