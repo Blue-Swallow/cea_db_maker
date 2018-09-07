@@ -21,22 +21,25 @@ class Single_tank():
     Return
     ---------
     """
-    def __init__(self, cea_fldpath, dt, tb_init, Pc_init, eta, Pti, Ptf, Vox, Do, Cd, Lf, Dfi, rho_ox, rho_f, Dti, De, Pa, rn, theta):
+    def __init__(self, cea_fldpath, dt, tb_init, Pc_init, a, n, eta, Pti, Ptf, Vt, Do, Cd, Lf, Dfi, Dfo, rho_ox, rho_f, Dti, De, Pa, rn, theta):
         self.cea_fldpath = cea_fldpath
         self.dt = dt # time interval [s]
         self.tb_init = tb_init # initial firing duration time for iteration [s]
         self.Pc_init = Pc_init # initial chamber pressure for iteration [Pa]
+        self.a = a # pre-expotential coefficient of Gox [m^3/kg]
+        self.n = n # expotential coefficient of Gox
         self.eta = eta
         self.Pti = Pti # initial tank pressure [Pa]
         self.Ptf = Ptf # final tank pressure [Pa]
-        self.Vox = Vox # oxidizer volume [m^3]
+        self.Vt = Vt # oxidizer volume [m^3]
         self.Do = Do
         self.Cd = Cd
         self.Lf = Lf # fuel length [m]
         self.Dfi = Dfi # initial fuel port diameter [m]
+        self.Dfo = Dfo # fuel outer diameter [m]
         self.rho_ox = rho_ox
         self.rho_f = rho_f
-        self.Mox_fill = Vox*rho_ox # total oxidizer mass [kg]
+        self.Mox_fill = Vt*rho_ox # total oxidizer mass [kg]
         self.Dti = Dti # initial nozzle throat diameter [m]
         self.De = De # nozzle exit diameter [m]
         self.Pa = Pa # ambient pressure [Pa]
@@ -45,22 +48,22 @@ class Single_tank():
         self.func_cstr = Read_datset(cea_fldpath).gen_func("CSTAR")
         self.func_gamma = Read_datset(cea_fldpath).gen_func("GAMMAs_c")
         self.of_max = Read_datset(cea_fldpath).of.max()
-        self.Pc = np.array([])
-        self.Pt = np.array([])        
-        self.mox = np.array([])
-        self.Mox = np.array([])
-        self.Mf = np.array([])
-        self.Df = np.array([])
-        self.Gox = np.array([])
-        self.r = np.array([])
-        self.Dt = np.array([])        
-        self.mf = np.array([])
-        self.cstr = np.array([])
-        self.of = np.array([])
-        self.Pe = np.array([])
-        self.CF = np.array([])
-        self.F = np.array([])
-        self.I = np.array([])
+#        self.Pc = np.array([])
+#        self.Pt = np.array([])        
+#        self.mox = np.array([])
+#        self.Mox = np.array([])
+#        self.Mf = np.array([])
+#        self.Df = np.array([])
+#        self.Gox = np.array([])
+#        self.r = np.array([])
+#        self.Dt = np.array([])        
+#        self.mf = np.array([])
+#        self.cstr = np.array([])
+#        self.of = np.array([])
+#        self.Pe = np.array([])
+#        self.CF = np.array([])
+#        self.F = np.array([])
+#        self.I = np.array([])
         
     def exe_sim(self):
         """ Execute Simulation
@@ -81,12 +84,14 @@ class Single_tank():
         try:
             self.tb = optimize.newton(self.func_error_tb, tb_init, tol= 1.0e-2,maxiter=maxiter)
         except:
+#            pass
             self.tb = optimize.brentq(self.func_error_tb, tb_min, tb_max, xtol=1.0e-2, maxiter=maxiter, full_output=False)
         self.df = pd.DataFrame([], index=np.arange(0, self.tb+self.dt/2, self.dt))
         self.df["Pc"] = self.Pc
         self.df["Pt"] = self.Pt        
         self.df["mox"] = self.mox
         self.df["Mox"] = self.Mox
+        self.df["Vox"] = self.Vox
         self.df["mf"] = self.mf
         self.df["Mf"] = self.Mf
         self.df["Df"] = self.Df
@@ -122,6 +127,7 @@ class Single_tank():
         self.Pt = np.array([])
         self.mox = np.array([])
         self.Mox = np.array([])
+        self.Vox = np.array([])
         self.Mf = np.array([])
         self.Df = np.array([])
         self.Gox = np.array([])
@@ -138,7 +144,8 @@ class Single_tank():
         t = 0
         pbar = tqdm(total=tb/self.dt)
         while(self._tmp_Mox_ <= self.Mox_fill):
-            Pc = self.iterat_Pc(t, tb)
+            mox  = self.iterat_mox(t, tb)
+            Pc = self._tmp_Pc_
             of = self._tmp_of_
             eps = np.power(self.De/self._tmp_Dt_, 2.0)
             Pe = self.iterat_Pe(of, Pc, eps)
@@ -195,42 +202,103 @@ class Single_tank():
         eps_cal = np.power((2/(gam+1)), 1/(gam-1)) * np.power(Pc/Pe, 1/gam) / np.sqrt((gam+1)/(gam-1)*(1-np.power(Pe/Pc, (gam-1)/gam)))
         return(eps_cal)
 
-    
 
-    
-    def iterat_Pc(self, t, tb, Pc_min=0.2e+6, maxiter=100):
+
+    def iterat_mox(self, t, tb, mox_min=0.0, maxiter=100):
         try:
             if t == 0:
-                Pc_init = self.Pc_init
+                mox_init = 0
             else:
-                Pc_init = self.Pc[-1]
-            Pc = optimize.newton(self.func_error_Pc, Pc_init, maxiter=maxiter, tol=1.0e-3, args=(t,tb))
+                mox_init = self.mox[-1]
+            mox = optimize.newton(self.func_error_mox, mox_init, maxiter=maxiter, tol=1.0e-3, args=(t,tb))
         except:
-            Pc = optimize.brentq(self.func_error_Pc, Pc_min, self.Pti, xtol=1.0e-3, maxiter=maxiter, args=(t,tb))
-        self.Pc = np.append(self.Pc, Pc)
+            try:
+                Pt_max = self.Pti
+            except:
+                Pt_max = self.Pgi
+#            mox = optimize.brentq(self.func_error_mox, mox_min, np.sqrt(2*self.rho_ox*self.Pti), xtol=1.0e-3, maxiter=maxiter, args=(t,tb))
+            mox = optimize.brentq(self.func_error_mox, mox_min, np.sqrt(2*self.rho_ox*Pt_max), xtol=1.0e-3, maxiter=maxiter, args=(t,tb))
+        self.mox = np.append(self.mox, mox)        
+        self._tmp_Mox_ = self.func_Mox(t, mox)
+        self._tmp_Vox_ = self.func_Vox(t, mox)
+        self.Pc = np.append(self.Pc, self._tmp_Pc_)
         self.of = np.append(self.of, self._tmp_of_)
         self.cstr = np.append(self.cstr, self._tmp_cstr_)
-        self.mox = np.append(self.mox, self._tmp_mox_)
         self.Mox = np.append(self.Mox, self._tmp_Mox_)
-        self.Mf = np.append(self.Mf, self._tmp_Mf_)
+        self.Vox = np.append(self.Vox, self._tmp_Vox_)
         self.Df = np.append(self.Df, self._tmp_Df_)
+        self._tmp_Mf_ = self.func_Mf(t ,mox, self._tmp_Df_)
+        self.Mf = np.append(self.Mf, self._tmp_Mf_)
         self.Gox = np.append(self.Gox, self._tmp_Gox_)
         self.r = np.append(self.r, self._tmp_r)
         self.mf = np.append(self.mf, self._tmp_mf_)
         self.Dt = np.append(self.Dt, self._tmp_Dt_)
         self.Pt = np.append(self.Pt, self._tmp_Pt_)
+
+    def func_error_mox(self, mox, t, tb):
+        mox_cal = self.func_mox(mox, t, tb)
+        diff = mox - mox_cal
+        error = diff/mox_cal
+        return(error)
+    
+    def func_mox(self, mox, t, tb):
+        Pt = self.func_Pt(t, tb, mox)
+        Pc = self.iterat_Pc(t, tb, mox)
+        mox_cal = self.Cd*(np.pi*np.power(self.Do, 2)/4)*np.sqrt(2*self.rho_ox*(Pt-Pc))
+        self._tmp_mox_ = mox
+        return(mox_cal)
+#        mf = self.func_mf(t, mox)
+#        if mf == 0 and mox>0:
+#            of = self.of_max
+#        elif mox==0 and mox==0:
+#            of = 0
+#        else:
+#            of = mox/mf
+#        if of > self.of_max:
+#            of = self.of_max
+#        self._tmp_of_ = of
+#        cstr = self.eta*self.func_cstr(of, Pc)
+#        self._tmp_cstr_ = cstr
+#        At = self.func_At(t)
+#        Pc_cal = cstr*(mox + mf)/At
+#        return(Pc_cal)
+    
+
+    
+    def iterat_Pc(self, t, tb, mox, Pc_min=0.2e+6, maxiter=100):
+        try:
+            if t == 0:
+                Pc_init = self.Pc_init
+            else:
+                Pc_init = self.Pc[-1]
+            Pc = optimize.newton(self.func_error_Pc, Pc_init, maxiter=maxiter, tol=1.0e-3, args=(t,tb, mox))
+        except:
+            Pc = optimize.brentq(self.func_error_Pc, Pc_min, self.Pti, xtol=1.0e-3, maxiter=maxiter, args=(t,tb, mox))
+        self._tmp_Pc_ = Pc
+#        self.of = np.append(self.of, self._tmp_of_)
+#        self.cstr = np.append(self.cstr, self._tmp_cstr_)
+#        self.mox = np.append(self.mox, self._tmp_mox_)
+#        self.Mox = np.append(self.Mox, self._tmp_Mox_)
+#        self.Mf = np.append(self.Mf, self._tmp_Mf_)
+#        self.Df = np.append(self.Df, self._tmp_Df_)
+#        self.Gox = np.append(self.Gox, self._tmp_Gox_)
+#        self.r = np.append(self.r, self._tmp_r)
+#        self.mf = np.append(self.mf, self._tmp_mf_)
+#        self.Dt = np.append(self.Dt, self._tmp_Dt_)
+#        self.Pt = np.append(self.Pt, self._tmp_Pt_)
         return(Pc)
 
         
-    def func_error_Pc(self, Pc, t, tb):
-        Pc_cal = self.func_Pc(Pc, t, tb)
+    def func_error_Pc(self, Pc, t, tb, mox):
+        Pc_cal = self.func_Pc(Pc, t, tb, mox)
         diff = Pc - Pc_cal
         error = diff/Pc_cal
         return(error)
     
-    def func_Pc(self, Pc, t, tb):
-        mox = self.func_mox(t, Pc, tb)
-        mf = self.func_mf(t, mox)
+    def func_Pc(self, Pc, t, tb, mox):
+#        mox = self.func_mox(t, Pc, tb)
+        Df = self.iterat_Df(t, mox)
+        mf = self.func_mf(t, mox, Df)
         if mf == 0 and mox>0:
             of = self.of_max
         elif mox==0 and mox==0:
@@ -246,41 +314,35 @@ class Single_tank():
         Pc_cal = cstr*(mox + mf)/At
         return(Pc_cal)
 
-    def func_At(self, t):
-        Dt = self.Dti -2*self.rn*t
-        At = np.pi*np.power(Dt, 2)/4
-        self._tmp_Dt_ = Dt
-        return(At)
 
-    def func_mf(self, t, mox):
-        Df = self.func_Df(t)
-        r = self.func_regression(Df, mox)
-        mf = self.Lf*Df*self.rho_f*r
-        self._tmp_mf_ = mf
-        return(mf)
 
-    def func_Df(self, t):
-        Mf = self.func_Mf(t)
-        Df = np.sqrt(4*Mf/(np.pi*self.rho_f*self.Lf) + np.power(self.Dfi, 2))
+
+    def iterat_Df(self, t, mox, maxiter=100):
+        try:
+            if t == 0:
+                Df_init = self.Dfi
+            else:
+                Df_init = self.Df[-1]
+            Df = optimize.newton(self.func_error_Df, Df_init, maxiter=maxiter, tol=1.0e-3, args=(t, mox))
+        except:
+            Df = optimize.brentq(self.func_error_Df, self.Dfi, self.Dfo, xtol=1.0e-3, maxiter=maxiter, args=(t, mox))
         self._tmp_Df_ = Df
         return(Df)
 
-    def func_regression(self, Df, mox):
-        a = 1.310e-4 # regression coefficient [m^3/kg]
-        n = 0.340 # oxidizer mass flux exponent
-        Gox = self.func_Gox(Df, mox)
-        r = a*np.power(Gox, n)
-        self._tmp_r = r
-        return(r)
-
-    def func_Gox(self, Df, mox):
-        Gox = 4*mox/(np.pi*Df)
-        self._tmp_Gox_ = Gox
-        return(Gox)
-
+    def func_error_Df(self, Df, t, mox):
+        Df_cal = self.func_Df(Df, t, mox)
+        diff = Df - Df_cal
+        error = diff/Df_cal
+        return(error)    
+    
+    def func_Df(self, Df, t, mox):
+        dMf = self.func_Mf(t, mox, Df) - self.func_Mf(t-self.dt, mox, Df)
+        Df_cal = np.sqrt(4*dMf/(np.pi*self.rho_f*self.Lf) + np.power(self.Df, 2))
+        self._tmp_Df_ = Df
+        return(Df)
 
 
-    def func_Mf(self, t):
+    def func_Mf(self, t, mox, Df):
         """ Calculate total fuel consumption Mf
         
         Paratmeter
@@ -295,44 +357,78 @@ class Single_tank():
         Mox: float
             total oxidizer mass [kg] by t [s]
         """    
-        t_list = np.arange(0, t-self.dt/2, self.dt)
-        if t == 0:
+        t_list = np.arange(0, t+self.dt/2, self.dt)
+        if len(t_list) != len(self.mf):
+            mf_list = np.append(self.mf, self.func_mf(t, mox , Df))
+        else:
+            mf_list = self.mf
+        if t <= 0:
             Mf = 0
+            t_list = np.array([0,])
         else:
 #            tmp_mf = np.append(self.mf, mf)
 #            Mf = integrate.simps(tmp_mf, t_list)
-            Mf = integrate.simps(self.mf, t_list)
-        self._tmp_Mf_ = Mf
+            Mf = integrate.simps(mf_list, t_list)
+#        self._tmp_Mf_ = Mf
         return(Mf)
+
+
+    def func_mf(self, t, mox, Df):
+        r = self.func_regression(Df, mox)
+        mf = self.Lf*Df*self.rho_f*r
+        self._tmp_mf_ = mf
+        return(mf)
+
+    def func_regression(self, Df, mox):
+        Gox = self.func_Gox(Df, mox)
+        r = self.a*np.power(Gox, self.n)
+        self._tmp_r = r
+        return(r)
+
+    def func_Gox(self, Df, mox):
+        Gox = 4*mox/(np.pi*Df)
+        self._tmp_Gox_ = Gox
+        return(Gox)
+
+
+    def func_At(self, t):
+        Dt = self.Dti -2*self.rn*t
+        At = np.pi*np.power(Dt, 2)/4
+        self._tmp_Dt_ = Dt
+        return(At)
+
+
     
 
 
-    def func_mox(self, t, Pc, tb):
-        """ Calculate oxidizer mass flow rate
-        
-        Parameter
-        ---------
-        Cd: float
-            discharge coefficient [-]
-        Do: float
-            orifice diameter [mm]
-        rho_ox: float
-            oxidizer density [kg/m^3]
-        t: float
-            time [s]
-        Pt: float
-            tank pressure [Pa]
-        Pc: float
-            camber pressure [Pa]
-        """
-        Pt = self.func_Pt(t, tb)
-        mox = self.Cd*(np.pi*np.power(self.Do, 2)/4)*np.sqrt(2*self.rho_ox*(Pt-Pc))
-        Mox =self.func_Mox(t, mox) # calculate total oxidizer mass flow
-        self._tmp_mox_ = mox
-#        self.mox = np.append(self.mox, self._tmp_mox)
-        return(mox)
+#==============================================================================
+#     def func_mox(self, t, Pc, tb):
+#         """ Calculate oxidizer mass flow rate
+#         
+#         Parameter
+#         ---------
+#         Cd: float
+#             discharge coefficient [-]
+#         Do: float
+#             orifice diameter [mm]
+#         rho_ox: float
+#             oxidizer density [kg/m^3]
+#         t: float
+#             time [s]
+#         Pt: float
+#             tank pressure [Pa]
+#         Pc: float
+#             camber pressure [Pa]
+#         """
+#         Pt = self.func_Pt(t, tb)
+#         mox = self.Cd*(np.pi*np.power(self.Do, 2)/4)*np.sqrt(2*self.rho_ox*(Pt-Pc))
+#         Mox =self.func_Mox(t, mox) # calculate total oxidizer mass flow
+#         self._tmp_mox_ = mox
+# #        self.mox = np.append(self.mox, self._tmp_mox)
+#         return(mox)
+#==============================================================================
 
-    def func_Pt(self, t, tb):
+    def func_Pt(self, t, tb ,mox):
         """ Calculate tank pressure
         
         Parameter
@@ -352,7 +448,7 @@ class Single_tank():
         return(Pt)
 
 
-    def func_Mox(self, t, mox):
+    def func_Mox(self, t , mox):
         """ Calculate total oxidizer mass Mox
         
         Paratmeter
@@ -367,14 +463,24 @@ class Single_tank():
         Mox: float
             total oxidizer mass [kg] by t [s]
         """
+        t_list = np.arange(0, t+self.dt/2, self.dt)
+        if len(t_list) != len(self.mox):
+            mox_list = np.append(self.mox, mox)
+        else:
+            mox_list = self.mox
         if t==0:
             Mox = 0
         else:
-            t_list = np.arange(0, t+self.dt/2, self.dt)
-            tmp_mox = np.append(self.mox, mox)
-            Mox = integrate.simps(tmp_mox, t_list)
-            self._tmp_Mox_ = Mox
+            Mox = integrate.simps(mox_list, t_list)
         return(Mox)
+    
+    def func_Vox(self, t, mox):
+        if t == 0:
+            Vox = self.Vt
+        else:
+            Vox = self.Vox[-1] - (self.func_Mox(t, mox) - self.Mox[-1])/self.rho_ox
+        self._tmp_Vox_ = Vox
+        return(Vox)
 
 
 class Double_tank(Single_tank):
@@ -390,29 +496,33 @@ class Double_tank(Single_tank):
         in the case of elbow, the coefficient is 1.129. 
     """
     
-    def __init__(self, cea_fldpath, dt, tb_init, Pc_init, eta, Pti, Pgi, Vox, Vg, Do, Cd, Lf, Dfi, rho_ox, rho_f, rho_g, mu_g, Dpg, Lpg, eps, zeta, Dti, De, Pa, rn, theta):
+    def __init__(self, cea_fldpath, dt, tb_init, Pc_init, a, n, eta, Pgi, Vt, Vg, Do, Cd, Lf, Dfi, Dfo, rho_ox, rho_f, rho_g, mu_g, gamma_g, Dpg, Lpg, eps, zeta, Dti, De, Pa, rn, theta):
         self.dt = dt # time interval [s]
         self.tb_init = tb_init # initial firing duration time for iteration [s]
         self.Pc_init = Pc_init # initial chamber pressure for iteration [Pa]
+        self.a = a # pre-expotential coefficient of Gox [m^3/kg]
+        self.n = n # expotential coefficient of Gox
         self.eta = eta
-        self.Pti = Pti # initial tank pressure [Pa]
+#        self.Pti = Pti # initial tank pressure [Pa]
 #        self.Ptf = Ptf # final tank pressure [Pa]
         self.Pgi = Pgi # initial gass tank pressure [Pa]
-        self.Vox = Vox # oxidizer volume [m^3]
+        self.Vt = Vt # oxidizer volume [m^3]
         self.Vg = Vg # pressurigze gass tank volume [m^3]
         self.Do = Do
         self.Cd = Cd
         self.Lf = Lf # fuel length [m]
         self.Dfi = Dfi # initial fuel port diameter [m]
+        self.Dfi = Dfi # initial fuel port diameter [m]
         self.rho_ox = rho_ox
         self.rho_f = rho_f
         self.rho_g = rho_g # density of pressurize gas [kg/m^3]
         self.mu_g = mu_g # viscosity of pressurize gas [Pa-s]
+        self.gamma_g = gamma_g # specific heat ratio of pressurize gas [-]
         self.Dpg = Dpg # pipe diameter of pressurize gas [m]
         self.Lpg = Lpg # straight pipe length [m]
         self.eps = eps # equivalent sand roughness [m]
         self.zeta = zeta # combined pressure loss coefficient
-        self.Mox_fill = Vox*rho_ox # total oxidizer mass [kg]
+        self.Mox_fill = Vt*rho_ox # total oxidizer mass [kg]
         self.Dti = Dti # initial nozzle throat diameter [m]
         self.De = De # nozzle exit diameter [m]
         self.Pa = Pa # ambient pressure [Pa]
@@ -422,137 +532,151 @@ class Double_tank(Single_tank):
         self.func_gamma = Read_datset(cea_fldpath).gen_func("GAMMAs_c")
         self.of_max = Read_datset(cea_fldpath).of.max()
 
-
-    def func_Pc(self, Pc, t, tb):
-        rho_g = self.rho_g
-        mu_g = self.mu_g
-        Pg = self.iterat_Pg(Pc, rho_g, mu_g)
-        Vol_ox = self.iterat_Vol_ox(Pg, mu_g, rho_g)
-        Pt = Pg - self.func_dPg(Vol_ox, rho_g, mu_g)
-        self._tmp_Pt_ = Pt
-        mox = self.func_mox(Pg, Pc, Vol_ox, rho_g, mu_g)
-        Mox =self.func_Mox(t, mox) # calculate total oxidizer mass flow
-        mf = self.func_mf(t,mox)
-        if mf == 0 and mox>0:
-            of = self.of_max
-        elif mox==0 and mox==0:
-            of = 0
+    def func_Pt(self, t, tb ,mox):
+#        Vox_ = self._tmp_Vox_ # volume of oxidizer in tank when t=t_i
+        Vox =  self.func_Vox(t, mox)# volume of oxidizer in tank when t=t_i+1
+        if t==0:
+            Pt = self.Pgi
         else:
-            of = mox/mf
-        if of > self.of_max:
-            of = self.of_max
-        self._tmp_of_ = of
-        cstr = self.eta*self.func_cstr(of, Pc)
-        self._tmp_cstr_ = cstr
-        At = self.func_At(t)
-        Pc_cal = cstr*(mox + mf)/At
-        return(Pc_cal)
-
-
-    def iterat_Pg(self, Pc, rho_g, mu_g):
-        """ Iteration of gas tank pressure [Pa]
-        """
-        Pg = optimize.newton(self.func_error_mox, 5.0e+6, args=(Pc, rho_g, mu_g))
-        return(Pg)
-        
-    def func_error_mox(self, Pg, Pc, rho_g, mu_g):
-        Vol_ox = self.iterat_Vol_ox(Pg, mu_g, rho_g)
-        mox = self.rho_ox*Vol_ox/self.dt
-        mox_cal = self.func_mox(Pg, Pc, Vol_ox, rho_g, mu_g)
-        diff = mox_cal - mox
-        error = diff/mox_cal
-        return(error)
-
-    def func_mox(self, Pg, Pc, Vol_g, rho_g, mu_g):
-        dPg = self.func_dPg(Vol_g, rho_g, mu_g)
-        mox = self.Cd*(np.pi*np.power(self.Do, 2)/4)*np.sqrt(2*self.rho_ox*((Pg-dPg) - Pc))
-        self._tmp_mox_ = mox
-        return(mox)
-
-    def iterat_Vol_ox(self, Pg, mu_g, rho_g):
-        """ Iteration of Vox: oxidizer volume flow rate [m^3/s]
-        """
-#        Vol_ox = optimize.brentq(self.func_error_Vol_ox)
-        Vol_ox = optimize.newton(self.func_error_Vol_ox, 1.0e-3, args=(Pg, mu_g, rho_g))
-        return(Vol_ox)
-        
-    def func_error_Vol_ox(self, Vol_ox, Pg, mu_g, rho_g):
-        Vol_ox_cal = self.func_Vol_ox(Vox, Pg, mu_g, rho_g)
-        diff = Vol_ox_cal - Vol_ox
-        error = diff/Vol_ox_cal
-        return(error)
-        
-    def func_Vol_ox(self, Vol_ox, Pg, mu_g, rho_g):
-        """ Calculate the oxidize volume flow rate in dt [m^3]
-        
-        Parameter
-        ---------
-        Vol_ox: float
-            oxidizer volume flow rate in dt [m^3]
-        Pg: float
-            gas tank pressure [Pa]
-        mu_g: float
-            viscosity of pressurize gas [Pa-s]
-        rho_g: float
-            density of pressurize gas [kg/m^3]
-        """
-        Vol_g = Vol_ox # pressurize gas volume in dt; that is equal to oxidizer volume in dt
-        dPg = self.func_dPg(Vol_g, rho_g, mu_g) # pressure loss throug pipe
-        Vol_ox_cal = (self.Pgi - Pg)*self.Vg/(Pg - dPg) # assuming isothermal changing *This should considers isentropic condition?.
-        return(Vol_ox_cal)
+            Pt = np.power((self.Vg+self.Vt-self.Vox[-1])/(self.Vg+self.Vt-Vox) , self.gamma_g) *self.Pt[-1]
+        self._tmp_Pt_ = Pt
+        return(Pt)
     
-    def func_dPg(self, Vol_g, rho_g, mu_g):
-        """ Calculate the pressure loss of pressurize gas
-        
-        Parameter
-        ----------
-        Vol_ox: float
-            oxidizer volume flow rate in dt [m^3]
-        mu_g: float
-            viscosity of pressurize gas [Pa-s]
-        rho_g: float
-            density of pressurize gas [kg/m^3]
-        """
-        Ap = np.pi*np.power(self.Dpg, 2)/4 # closs section area of pressurize gas pipe [m^2]
-        ug = Vol_g/(Ap*self.dt) # gas velocity in the pipe
-        dP_zeta = self.zeta*rho_g*np.power(ug,2) # pressure loss of inlet, outlet and bended tube etc...
-        Re_g = rho_g*ug*self.Dpg/mu_g
-        if Re_g > 4000: # turbulent flow
-            lmbd = optimize.newton(self._func_lmbd_, 0.03, args=(Re_g,))
-        else: # laminar flow
-            lmbd = 64/Re_g
-        dP_pipe = lmbd*self.Lpg/(2*self.Dpg) * rho_g*np.power(ug,2) # pressure loss through straight pipe
-        return(dP_zeta + dP_pipe)
-        
-    
-    def _func_lmbd_(self, lmbd, Re_g):
-        """ Iterate calculation of pipe friction factor: lmbd, using Cole-brook empirical formula
-        
-        Parameter
-        ------------
-        lmbd: float
-            pipe friction factor
-        Re_g: float
-            Reynolds number of pressurzie gas in the pipe
-        """
-        ans = 1/np.sqrt(lmbd) + 2*np.log10(self.eps/(3.71*self.Dpg) + 2.51/(Re_g*np.sqrt(lmbd)))
-        return(ans)
+#==============================================================================
+#     def func_Pc(self, Pc, t, tb):
+#         rho_g = self.rho_g
+#         mu_g = self.mu_g
+#         Pg = self.iterat_Pg(Pc, rho_g, mu_g)
+#         Vol_ox = self.iterat_Vol_ox(Pg, mu_g, rho_g)
+#         Pt = Pg - self.func_dPg(Vol_ox, rho_g, mu_g)
+#         self._tmp_Pt_ = Pt
+#         mox = self.func_mox(Pg, Pc, Vol_ox, rho_g, mu_g)
+#         Mox =self.func_Mox(t, mox) # calculate total oxidizer mass flow
+#         mf = self.func_mf(t,mox)
+#         if mf == 0 and mox>0:
+#             of = self.of_max
+#         elif mox==0 and mox==0:
+#             of = 0
+#         else:
+#             of = mox/mf
+#         if of > self.of_max:
+#             of = self.of_max
+#         self._tmp_of_ = of
+#         cstr = self.eta*self.func_cstr(of, Pc)
+#         self._tmp_cstr_ = cstr
+#         At = self.func_At(t)
+#         Pc_cal = cstr*(mox + mf)/At
+#         return(Pc_cal)
+# 
+# 
+#     def iterat_Pg(self, Pc, rho_g, mu_g):
+#         """ Iteration of gas tank pressure [Pa]
+#         """
+#         Pg = optimize.newton(self.func_error_mox, 5.0e+6, args=(Pc, rho_g, mu_g))
+#         return(Pg)
+#         
+#     def func_error_mox(self, Pg, Pc, rho_g, mu_g):
+#         Vol_ox = self.iterat_Vol_ox(Pg, mu_g, rho_g) # oxidizer volume flow rate
+#         mox = self.rho_ox*Vol_ox/self.dt # oxidizer mass flow rate assumed by volume flow rate
+#         mox_cal = self.func_mox(Pg, Pc, Vol_ox, rho_g, mu_g) # calculated oxidizer mass flow rate
+#         diff = mox_cal - mox
+#         error = diff/mox_cal
+#         return(error)
+# 
+#     def func_mox(self, Pg, Pc, Vol_g, rho_g, mu_g):
+#         dPg = self.func_dPg(Vol_g, rho_g, mu_g)
+#         mox = self.Cd*(np.pi*np.power(self.Do, 2)/4)*np.sqrt(2*self.rho_ox*((Pg-dPg) - Pc))
+#         self._tmp_mox_ = mox
+#         return(mox)
+# 
+#     def iterat_Vol_ox(self, Pg, mu_g, rho_g):
+#         """ Iteration of Vt: oxidizer volume flow rate [m^3/s]
+#         """
+# #        Vol_ox = optimize.brentq(self.func_error_Vol_ox)
+#         Vol_ox = optimize.newton(self.func_error_Vol_ox, 1.0e-3, args=(Pg, mu_g, rho_g))
+#         return(Vol_ox)
+#         
+#     def func_error_Vol_ox(self, Vol_ox, Pg, mu_g, rho_g):
+#         Vol_ox_cal = self.func_Vol_ox(Vt, Pg, mu_g, rho_g)
+#         diff = Vol_ox_cal - Vol_ox
+#         error = diff/Vol_ox_cal
+#         return(error)
+#         
+#     def func_Vol_ox(self, Vol_ox, Pg, mu_g, rho_g):
+#         """ Calculate the oxidize volume flow rate in dt [m^3]
+#         
+#         Parameter
+#         ---------
+#         Vol_ox: float
+#             oxidizer volume flow rate in dt [m^3]
+#         Pg: float
+#             gas tank pressure [Pa]
+#         mu_g: float
+#             viscosity of pressurize gas [Pa-s]
+#         rho_g: float
+#             density of pressurize gas [kg/m^3]
+#         """
+#         Vol_g = Vol_ox # pressurize gas volume in dt; that is equal to oxidizer volume in dt
+#         dPg = self.func_dPg(Vol_g, rho_g, mu_g) # pressure loss throug pipe
+#         Vol_ox_cal = (self.Pgi - Pg)*self.Vg/(Pg - dPg) # assuming isothermal changing *This should considers isentropic condition?.
+#         return(Vol_ox_cal)
+#     
+#     def func_dPg(self, Vol_g, rho_g, mu_g):
+#         """ Calculate the pressure loss between gas tank and oxidizer tank
+#         
+#         Parameter
+#         ----------
+#         Vol_ox: float
+#             oxidizer volume flow rate in dt [m^3]
+#         mu_g: float
+#             viscosity of pressurize gas [Pa-s]
+#         rho_g: float
+#             density of pressurize gas [kg/m^3]
+#         """
+#         Ap = np.pi*np.power(self.Dpg, 2)/4 # closs section area of pressurize gas pipe [m^2]
+#         ug = Vol_g/(Ap*self.dt) # gas velocity in the pipe
+#         dP_zeta = self.zeta*rho_g*np.power(ug,2) # pressure loss of inlet, outlet and bended tube etc...
+#         Re_g = rho_g*ug*self.Dpg/mu_g
+#         if Re_g > 4000: # turbulent flow
+#             lmbd = optimize.newton(self._func_lmbd_, 0.03, args=(Re_g,))
+#         else: # laminar flow
+#             lmbd = 64/Re_g
+#         dP_pipe = lmbd*self.Lpg/(2*self.Dpg) * rho_g*np.power(ug,2) # pressure loss through straight pipe
+#         return(dP_zeta + dP_pipe)
+#         
+#     
+#     def _func_lmbd_(self, lmbd, Re_g):
+#         """ Iterate calculation of pipe friction factor: lmbd, using Cole-brook empirical formula
+#         
+#         Parameter
+#         ------------
+#         lmbd: float
+#             pipe friction factor
+#         Re_g: float
+#             Reynolds number of pressurzie gas in the pipe
+#         """
+#         ans = 1/np.sqrt(lmbd) + 2*np.log10(self.eps/(3.71*self.Dpg) + 2.51/(Re_g*np.sqrt(lmbd)))
+#         return(ans)
+#==============================================================================
 
 
 if __name__ == "__main__":
 #    cea_fldpath = os.path.join("cea_db", "N2O_PE", "csv_database")
     cea_fldpath = os.path.join("cea_db", "GOX_PE", "csv_database")
     dt = 0.01 # time interval [s]
-    tb_init = 2.0 # initial firing duration time for iteration [s]
+    tb_init = 4.0 # initial firing duration time for iteration [s]
     Pc_init = 1.3e+6 # initial chamber pressure for iteration [Pa]
+    a = 1.310e-4 # regression coefficient [m^3/kg]
+    n = 0.340 # oxidizer mass flux exponent
     eta = 0.8
     Pti = 4.8e+6 # initial tank pressure [Pa]
     Ptf = 2.0e+6 # final tank pressure [Pa]
-    Vox = 440e-6 # oxidizer volume [m^3]
+    Vt = 440e-6 # oxidizer volume [m^3]
     Do = 3.0e-3
     Cd = 0.333
     Lf = 247e-3 # fuel length [m]
     Dfi = 35e-3 # initial fuel port diameter [m]
+    Dfo = 200e-3 # fuel outer diameter [m]
     rho_ox = 852.24 # oxidizer mass density [kg/m^3]
     rho_f = 1190 # fuel density [kg/m^3]
     Dti = 12.70e-3 # initial nozzle throat diameter [m]
@@ -561,7 +685,7 @@ if __name__ == "__main__":
     rn = 0.0 # nozzle throat regression rate [m]
     theta = 15 # nozzle opening half-angle [deg]
     
-#    inst = Single_tank(cea_fldpath, dt, tb_init, Pc_init, eta, Pti, Ptf, Vox, Do, Cd, Lf, Dfi, rho_ox, rho_f, Dti, De, Pa, rn, theta)
+#    inst = Single_tank(cea_fldpath, dt, tb_init, Pc_init, a, n, eta, Pti, Ptf, Vt, Do, Cd, Lf, Dfi, Dfo, rho_ox, rho_f, Dti, De, Pa, rn, theta)
 #    inst.exe_sim()
 #    dat = inst.df
     
@@ -569,10 +693,11 @@ if __name__ == "__main__":
     Vg = 1.0e-3 # pressurize gas tank volume [m^3]
     rho_g = 0.1786 # pressurize gas density [kg/m^3]
     mu_g = 0.0186e-3 # pressurize gas viscosity [Pa-s]
+    gamma_g = 1.4 # specific heat ratioi of pressuirze gas [-]
     Dpg = (25.4/4)*1.0e-3 # pipe diameter of pressurize gas [m]
     Lpg = 200e-3 # straight pipe length [m]
     eps = 0.0015e-3 # equivalent sand roughness [m]
     zeta = 0.25 # combined pressure loss coefficient
-    inst2 = Double_tank(cea_fldpath, dt, tb_init, Pc_init, eta, Pti, Pgi, Vox, Vg, Do, Cd, Lf, Dfi, rho_ox, rho_f, rho_g, mu_g, Dpg, Lpg, eps, zeta, Dti, De, Pa, rn, theta)
+    inst2 = Double_tank(cea_fldpath, dt, tb_init, Pc_init, a, n, eta, Pgi, Vt, Vg, Do, Cd, Lf, Dfi, Dfo, rho_ox, rho_f, rho_g, mu_g, gamma_g, Dpg, Lpg, eps, zeta, Dti, De, Pa, rn, theta)
     inst2.exe_sim()
     dat2 = inst2.df
