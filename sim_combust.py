@@ -375,7 +375,7 @@ class Single_tank():
 
     def func_mf(self, t, mox, Df):
         r = self.func_regression(Df, mox)
-        mf = self.Lf*Df*self.rho_f*r
+        mf = self.Lf*np.pi*Df*self.rho_f*r
         self._tmp_mf_ = mf
         return(mf)
 
@@ -386,7 +386,7 @@ class Single_tank():
         return(r)
 
     def func_Gox(self, Df, mox):
-        Gox = 4*mox/(np.pi*Df)
+        Gox = 4*mox/(np.pi*np.power(Df,2))
         self._tmp_Gox_ = Gox
         return(Gox)
 
@@ -662,28 +662,28 @@ class Double_tank(Single_tank):
 
 if __name__ == "__main__":
 #    cea_fldpath = os.path.join("cea_db", "N2O_PE", "csv_database")
-    cea_fldpath = os.path.join("cea_db", "GOX_PE", "csv_database")
+    cea_fldpath = os.path.join("cea_db", "LOX_PE", "csv_database")
     dt = 0.01 # time interval [s]
-    tb_init = 4.0 # initial firing duration time for iteration [s]
-    Pc_init = 1.3e+6 # initial chamber pressure for iteration [Pa]
-    a = 1.310e-4 # regression coefficient [m^3/kg]
-    n = 0.340 # oxidizer mass flux exponent
-    eta = 0.8
-    Pti = 4.8e+6 # initial tank pressure [Pa]
+    tb_init = 15.0 # initial firing duration time for iteration [s]
+    Pc_init = 3.0e+6 # initial chamber pressure for iteration [Pa]
+    a = 1.17063e-4 # regression coefficient [m^3/kg]
+    n = 0.62 # oxidizer mass flux exponent
+    eta = 0.7
+    Pti = 10.0e+6 # initial tank pressure [Pa]
     Ptf = 2.0e+6 # final tank pressure [Pa]
-    Vt = 440e-6 # oxidizer volume [m^3]
-    Do = 3.0e-3
-    Cd = 0.333
-    Lf = 247e-3 # fuel length [m]
-    Dfi = 35e-3 # initial fuel port diameter [m]
+    Vt = 10.0e-3 # oxidizer volume [m^3]
+    Do = 1.0e-3
+    Cd = 0.6 *38
+    Lf = 530e-3 # fuel length [m]
+    Dfi = 70e-3 # initial fuel port diameter [m]
     Dfo = 200e-3 # fuel outer diameter [m]
-    rho_ox = 852.24 # oxidizer mass density [kg/m^3]
-    rho_f = 1190 # fuel density [kg/m^3]
-    Dti = 12.70e-3 # initial nozzle throat diameter [m]
-    De = 22.0e-3 # nozzle exit diameter [m]
+    rho_ox = 1190.0 # oxidizer mass density [kg/m^3]
+    rho_f = 820 # fuel density [kg/m^3]
+    Dti = 37.70e-3 # initial nozzle throat diameter [m]
+    De = 85.0e-3 # nozzle exit diameter [m]
     Pa = 0.1013e-6 # ambient pressure [Pa]
     rn = 0.0 # nozzle throat regression rate [m]
-    theta = 15 # nozzle opening half-angle [deg]
+    theta = 10 # nozzle opening half-angle [deg]
     
 #    inst = Single_tank(cea_fldpath, dt, tb_init, Pc_init, a, n, eta, Pti, Ptf, Vt, Do, Cd, Lf, Dfi, Dfo, rho_ox, rho_f, Dti, De, Pa, rn, theta)
 #    inst.exe_sim()
