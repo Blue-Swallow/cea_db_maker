@@ -88,10 +88,12 @@ class Single_tank():
             self.tb = optimize.brentq(self.func_error_tb, tb_min, tb_max, xtol=1.0e-2, maxiter=maxiter, full_output=False)
         self.df = pd.DataFrame([], index=np.arange(0, self.tb+self.dt/2, self.dt))
         self.df["Pc"] = self.Pc
-        self.df["Pt"] = self.Pt        
+        self.df["Pt"] = self.Pt    
+        self.df["Pg"] = self.Pg
         self.df["mox"] = self.mox
         self.df["Mox"] = self.Mox
         self.df["Vox"] = self.Vox
+        self.df["vg"] = self.vg
         self.df["mf"] = self.mf
         self.df["Mf"] = self.Mf
         self.df["Df"] = self.Df
@@ -125,9 +127,13 @@ class Single_tank():
     def func_tb(self, tb):
         self.Pc = np.array([])
         self.Pt = np.array([])
+        self.Pg = np.array([])
+        self.Tt = np.array([])
+        self.Tg = np.array([])
         self.mox = np.array([])
         self.Mox = np.array([])
         self.Vox = np.array([])
+        self.vg = np.array([])
         self.Mf = np.array([])
         self.Df = np.array([])
         self.Gox = np.array([])
@@ -155,7 +161,7 @@ class Single_tank():
             if Pc <= 0:
                 Pc = Pe
             CF = np.sqrt((2*np.power(gamma, 2)/(gamma-1))*np.power(2/(gamma+1), (gamma+1)/(gamma-1))*(1-np.power(Pe/Pc,(gamma-1)/gamma))) + (Pe-self.Pa)*eps/Pc
-            F = self.lmbd*CF*Pc*np.power(self._tmp_Dt_, 2)
+            F = self.lmbd*CF*Pc*np.power(self._tmp_Dt_, 2)*np.pi/4
             self.Pe = np.append(self.Pe, Pe)
             self.CF = np.append(self.CF, CF)        
             self.F = np.append(self.F, F)
@@ -226,6 +232,7 @@ class Single_tank():
         self.cstr = np.append(self.cstr, self._tmp_cstr_)
         self.Mox = np.append(self.Mox, self._tmp_Mox_)
         self.Vox = np.append(self.Vox, self._tmp_Vox_)
+        self.vg = np.append(self.vg, self._tmp_vg_)
         self.Df = np.append(self.Df, self._tmp_Df_)
         self._tmp_Mf_ = self.func_Mf(t ,mox, self._tmp_Df_)
         self.Mf = np.append(self.Mf, self._tmp_Mf_)
@@ -234,6 +241,10 @@ class Single_tank():
         self.mf = np.append(self.mf, self._tmp_mf_)
         self.Dt = np.append(self.Dt, self._tmp_Dt_)
         self.Pt = np.append(self.Pt, self._tmp_Pt_)
+        self.Pg = np.append(self.Pg, self._tmp_Pg_)
+        self.Tt = np.append(self.Tt, self._tmp_Tt_)
+        self.Tg = np.append(self.Tg, self._tmp_Tg_)
+
 
     def func_error_mox(self, mox, t, tb):
         mox_cal = self.func_mox(mox, t, tb)
@@ -660,6 +671,100 @@ class Double_tank(Single_tank):
 #==============================================================================
 
 
+
+class Double_tank_regulator_tmp(Single_tank):
+    """ Class to simulate when the system has pressurize gas tank and regulator
+    
+    Parameter
+    ----------    
+    zeta: float
+        combined pressure loss coefficient.  
+        For example:
+        in the case of inlet of pipe, the coefficient is 0.5 but it depends on inlet shape;
+        in the case of outlet of pipe, the coefficient is nearly equal to 1.0;
+        in the case of elbow, the coefficient is 1.129. 
+    """
+
+    def __init__(self, cea_fldpath, dt, tb_init, Pc_init, a, n, eta, Pgi, Tgi, Pt_reg, cv_reg, Vt, Vg, Do, Cd, Lf, Dfi, Dfo, rho_ox, rho_f, Rg, rho_g, mu_g, gamma_g, cpg, Dpg, Lpg, eps, zeta, Dti, De, Pa, rn, theta):
+        self.dt = dt # time interval [s]
+        self.tb_init = tb_init # initial firing duration time for iteration [s]
+        self.Pc_init = Pc_init # initial chamber pressure for iteration [Pa]
+        self.a = a # pre-expotential coefficient of Gox [m^3/kg]
+        self.n = n # expotential coefficient of Gox
+        self.eta = eta
+#        self.Pti = Pti # initial tank pressure [Pa]
+#        self.Ptf = Ptf # final tank pressure [Pa]
+        self.Pgi = Pgi # initial gass tank pressure [Pa]
+        self.Tgi = Tgi # initial gas temperature [K]
+        self.Pt_reg = Pt_reg # ragulate pressure [Pa]
+        self.cv_reg = cv_reg # Cv value of regulator [m^2]
+        self.Vt = Vt # oxidizer volume [m^3]
+        self.Vg = Vg # pressurigze gass tank volume [m^3]
+        self.Do = Do
+        self.Cd = Cd
+        self.Lf = Lf # fuel length [m]
+        self.Dfi = Dfi # initial fuel port diameter [m]
+        self.Dfo = Dfo # fuel outer diameter [m]
+        self.rho_ox = rho_ox
+        self.rho_f = rho_f
+        self.Rg = Rg
+        self.rho_g = rho_g # density of pressurize gas [kg/m^3]
+        self.mu_g = mu_g # viscosity of pressurize gas [Pa-s]
+        self.gamma_g = gamma_g # specific heat ratio of pressurize gas [-]
+        self.cpg = cpg # specific heat capacity [J/kg/K]
+        self.Dpg = Dpg # pipe diameter of pressurize gas [m]
+        self.Lpg = Lpg # straight pipe length [m]
+        self.eps = eps # equivalent sand roughness [m]
+        self.zeta = zeta # combined pressure loss coefficient
+        self.Mox_fill = Vt*rho_ox # total oxidizer mass [kg]
+        self.Dti = Dti # initial nozzle throat diameter [m]
+        self.De = De # nozzle exit diameter [m]
+        self.Pa = Pa # ambient pressure [Pa]
+        self.rn = rn # nozzle throat regression rate [m]
+        self.lmbd = (1 + np.cos( np.deg2rad(theta) ))/2 # nozzle coefficient. theta is nozzle opening half-angle [rad]
+        self.func_cstr = Read_datset(cea_fldpath).gen_func("CSTAR")
+        self.func_gamma = Read_datset(cea_fldpath).gen_func("GAMMAs_c")
+        self.of_max = Read_datset(cea_fldpath).of.max()
+        
+    def func_Pt(self, t, tb ,mox):
+        Vox =  self.func_Vox(t, mox) # volume of oxidizer in tank when t=t_i+1
+        if t==0:
+            self._tmp_Pg_ = self.Pgi
+        else:
+            pass
+        if self._tmp_Pg_ > self.Pt_reg:
+            Pt = self.Pt_reg
+            Pg = self.func_Pg(t, Vox)
+        else:
+            Pt = np.power((self.Vg+self.Vt-self.Vox[-1])/(self.Vg+self.Vt-Vox) , self.gamma_g) *self.Pt[-1]
+            Pg = Pt
+        self._tmp_Pt_ = Pt
+        self._tmp_Pg_ = Pg
+        self.func_vg(t, mox, Pt)
+        return(Pt)
+        
+    def func_Pg(self, t, Vox):
+        ni = self.Pgi*self.Vg/(self.Rg*self.Tgi)
+        Tt = np.power(self.Pgi/self.Pt_reg, (1-self.gamma_g)/self.gamma_g)*self.Tgi
+        self._tmp_Tt_ = Tt
+#        Vox = self.func_Vox(t, mox)
+        Tg = self.Tgi - self.Pt_reg*(self.Vt - Vox)/self.cpg
+        self._tmp_Tg_ = Tg
+        Pg = (ni*self.Rg - self.Pt_reg*(self.Vt - Vox)/Tt)*(Tg/self.Vg)
+        return(Pg)
+        
+    def func_vg(self, t, mox, Pt):
+        if t == 0:
+            dVox = self.func_Mox(t, mox)/self.rho_ox
+        else:
+            dVox = (self.func_Mox(t, mox) - self.Mox[-1])/self.rho_ox
+        self._tmp_vg_ =  dVox # [m^3/s] gas mass flow volume
+        return(self._tmp_vg_)
+        
+
+
+
+
 if __name__ == "__main__":
 #    cea_fldpath = os.path.join("cea_db", "N2O_PE", "csv_database")
     cea_fldpath = os.path.join("cea_db", "LOX_PE", "csv_database")
@@ -669,28 +774,27 @@ if __name__ == "__main__":
     a = 1.17063e-4 # regression coefficient [m^3/kg]
     n = 0.62 # oxidizer mass flux exponent
     eta = 0.7
-    Pti = 10.0e+6 # initial tank pressure [Pa]
-    Ptf = 2.0e+6 # final tank pressure [Pa]
-    Vt = 10.0e-3 # oxidizer volume [m^3]
+    Pti = 5.0e+6 # initial tank pressure [Pa]
+    Ptf = 1.5e+6 # final tank pressure [Pa]
+    Vt = 15.0e-3 # oxidizer volume [m^3]
     Do = 1.0e-3
-    Cd = 0.6 *38
-    Lf = 530e-3 # fuel length [m]
-    Dfi = 70e-3 # initial fuel port diameter [m]
+    Cd = 0.6 *87
+    Lf = 820e-3 # fuel length [m]
+    Dfi = 100e-3 # initial fuel port diameter [m]
     Dfo = 200e-3 # fuel outer diameter [m]
     rho_ox = 1190.0 # oxidizer mass density [kg/m^3]
     rho_f = 820 # fuel density [kg/m^3]
-    Dti = 37.70e-3 # initial nozzle throat diameter [m]
-    De = 85.0e-3 # nozzle exit diameter [m]
-    Pa = 0.1013e-6 # ambient pressure [Pa]
+    Dti = 44.0e-3 # initial nozzle throat diameter [m]
+    De = 103.0e-3 # nozzle exit diameter [m]
+    Pa = 0.1013e+6 # ambient pressure [Pa]
     rn = 0.0 # nozzle throat regression rate [m]
     theta = 10 # nozzle opening half-angle [deg]
-    
 #    inst = Single_tank(cea_fldpath, dt, tb_init, Pc_init, a, n, eta, Pti, Ptf, Vt, Do, Cd, Lf, Dfi, Dfo, rho_ox, rho_f, Dti, De, Pa, rn, theta)
 #    inst.exe_sim()
 #    dat = inst.df
     
-    Pgi = 5.0e+6 # initial gas tank pressure [Pa]
-    Vg = 1.0e-3 # pressurize gas tank volume [m^3]
+    Pgi = 15.0e+6 # initial gas tank pressure [Pa]
+    Vg = 3.4e-3 # pressurize gas tank volume [m^3]
     rho_g = 0.1786 # pressurize gas density [kg/m^3]
     mu_g = 0.0186e-3 # pressurize gas viscosity [Pa-s]
     gamma_g = 1.4 # specific heat ratioi of pressuirze gas [-]
@@ -698,6 +802,24 @@ if __name__ == "__main__":
     Lpg = 200e-3 # straight pipe length [m]
     eps = 0.0015e-3 # equivalent sand roughness [m]
     zeta = 0.25 # combined pressure loss coefficient
-    inst2 = Double_tank(cea_fldpath, dt, tb_init, Pc_init, a, n, eta, Pgi, Vt, Vg, Do, Cd, Lf, Dfi, Dfo, rho_ox, rho_f, rho_g, mu_g, gamma_g, Dpg, Lpg, eps, zeta, Dti, De, Pa, rn, theta)
-    inst2.exe_sim()
-    dat2 = inst2.df
+#    inst2 = Double_tank(cea_fldpath, dt, tb_init, Pc_init, a, n, eta, Pgi, Vt, Vg, Do, Cd, Lf, Dfi, Dfo, rho_ox, rho_f, rho_g, mu_g, gamma_g, Dpg, Lpg, eps, zeta, Dti, De, Pa, rn, theta)
+#    inst2.exe_sim()
+#    dat2 = inst2.df
+    
+    Tgi = 300 # initial gas tank temperature [K]
+    Pt_reg = 5.0e+6 # regulator set pressure [Pa]
+    cv_reg = 0.5e-6 # Cv value of ragulator [m^2]
+    Rg = 8.314/4.002602 # specific gas constant of pressurize gas [J/kg/K]
+#    inst3 = Double_tank_regulator(cea_fldpath, dt, tb_init, Pc_init, a, n, eta, Pgi, Tgi, Pt_reg, cv_reg, Vt, Vg, Do, Cd, Lf, Dfi, Dfo, rho_ox, rho_f, Rg, rho_g, mu_g, gamma_g, Dpg, Lpg, eps, zeta, Dti, De, Pa, rn, theta)
+#    inst3.exe_sim()
+#    dat3 = inst3.df
+    
+    cpg = 5237 # specific heat capacity [J/kg/K]
+    inst4 = Double_tank_regulator_tmp(cea_fldpath, dt, tb_init, Pc_init, a, n, eta, Pgi, Tgi, Pt_reg, cv_reg, Vt, Vg, Do, Cd, Lf, Dfi, Dfo, rho_ox, rho_f, Rg, rho_g, mu_g, gamma_g, cpg, Dpg, Lpg, eps, zeta, Dti, De, Pa, rn, theta)
+    inst4.exe_sim()
+    dat4 = inst4.df
+    
+#    import matplotlib.pyplot as plt
+#    Pc_range = np.arange(0.2e+6, 10.0e+6, 0.1e+6)
+#    val = np.array([inst4.func_error_Pc(Pc, 0, 15, 0) for Pc in Pc_range])
+#    plt.plot(Pc_range, val)
