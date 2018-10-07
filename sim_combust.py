@@ -21,7 +21,7 @@ class Single_tank():
     Return
     ---------
     """
-    def __init__(self, cea_fldpath, dt, tb_init, Pc_init, a, n, eta, Pti, Ptf, Vt, Do, Cd, Lf, Dfi, Dfo, rho_ox, rho_f, Dti, De, Pa, rn, theta):
+    def __init__(self, cea_fldpath, dt, tb_init, Pc_init, a, n, eta, Pti, Ptf, Vt, Do, Cd, Np, Lf, Dfi, Dfo, rho_ox, rho_f, Dti, De, Pa, rn, theta):
         self.cea_fldpath = cea_fldpath
         self.dt = dt # time interval [s]
         self.tb_init = tb_init # initial firing duration time for iteration [s]
@@ -34,6 +34,7 @@ class Single_tank():
         self.Vt = Vt # oxidizer volume [m^3]
         self.Do = Do
         self.Cd = Cd
+        self.Np = Np # the number of fuel port
         self.Lf = Lf # fuel length [m]
         self.Dfi = Dfi # initial fuel port diameter [m]
         self.Dfo = Dfo # fuel outer diameter [m]
@@ -351,7 +352,7 @@ class Single_tank():
         if t <= 0:
             Df_cal = Df
         else:
-            Df_cal = np.sqrt(4*dMf/(np.pi*self.rho_f*self.Lf) + np.power(self.Df[-1], 2))
+            Df_cal = np.sqrt(4*dMf/(self.Np*np.pi*self.rho_f*self.Lf) + np.power(self.Df[-1], 2))
 #        self._tmp_Df_ = Df
         return(Df_cal)
 
@@ -389,7 +390,7 @@ class Single_tank():
 
     def func_mf(self, t, mox, Df):
         r = self.func_regression(Df, mox)
-        mf = self.Lf*np.pi*Df*self.rho_f*r
+        mf = self.Np*self.Lf*np.pi*Df*self.rho_f*r
         self._tmp_mf_ = mf
         return(mf)
 
@@ -510,7 +511,7 @@ class Double_tank(Single_tank):
         in the case of elbow, the coefficient is 1.129. 
     """
     
-    def __init__(self, cea_fldpath, dt, tb_init, Pc_init, a, n, eta, Pgi, Vt, Vg, Do, Cd, Lf, Dfi, Dfo, rho_ox, rho_f, rho_g, mu_g, gamma_g, Dpg, Lpg, eps, zeta, Dti, De, Pa, rn, theta):
+    def __init__(self, cea_fldpath, dt, tb_init, Pc_init, a, n, eta, Pgi, Vt, Vg, Do, Cd, Np, Lf, Dfi, Dfo, rho_ox, rho_f, rho_g, mu_g, gamma_g, Dpg, Lpg, eps, zeta, Dti, De, Pa, rn, theta):
         self.dt = dt # time interval [s]
         self.tb_init = tb_init # initial firing duration time for iteration [s]
         self.Pc_init = Pc_init # initial chamber pressure for iteration [Pa]
@@ -524,6 +525,7 @@ class Double_tank(Single_tank):
         self.Vg = Vg # pressurigze gass tank volume [m^3]
         self.Do = Do
         self.Cd = Cd
+        self.Np = Np # the number of fuel port
         self.Lf = Lf # fuel length [m]
         self.Dfi = Dfi # initial fuel port diameter [m]
         self.Dfi = Dfi # initial fuel port diameter [m]
@@ -688,7 +690,7 @@ class Double_tank_regulator_tmp(Single_tank):
         in the case of elbow, the coefficient is 1.129. 
     """
 
-    def __init__(self, cea_fldpath, dt, tb_init, Pc_init, a, n, eta, Pgi, Tgi, Pt_reg, cv_reg, Vt, Vg, Do, Cd, Lf, Dfi, Dfo, rho_ox, rho_f, Rg, rho_g, mu_g, gamma_g, cpg, Dpg, Lpg, eps, zeta, Dti, De, Pa, rn, theta):
+    def __init__(self, cea_fldpath, dt, tb_init, Pc_init, a, n, eta, Pgi, Tgi, Pt_reg, cv_reg, Vt, Vg, Do, Cd, Np, Lf, Dfi, Dfo, rho_ox, rho_f, Rg, rho_g, mu_g, gamma_g, cpg, Dpg, Lpg, eps, zeta, Dti, De, Pa, rn, theta):
         self.dt = dt # time interval [s]
         self.tb_init = tb_init # initial firing duration time for iteration [s]
         self.Pc_init = Pc_init # initial chamber pressure for iteration [Pa]
@@ -705,6 +707,7 @@ class Double_tank_regulator_tmp(Single_tank):
         self.Vg = Vg # pressurigze gass tank volume [m^3]
         self.Do = Do
         self.Cd = Cd
+        self.Np = Np # the number of fuel port
         self.Lf = Lf # fuel length [m]
         self.Dfi = Dfi # initial fuel port diameter [m]
         self.Dfo = Dfo # fuel outer diameter [m]
@@ -766,13 +769,11 @@ class Double_tank_regulator_tmp(Single_tank):
         
 
 
-
-
 if __name__ == "__main__":
 #    cea_fldpath = os.path.join("cea_db", "N2O_PE", "csv_database")
     cea_fldpath = os.path.join("cea_db", "LOX_PE", "csv_database")
     dt = 0.01 # time interval [s]
-    tb_init = 15.0 # initial firing duration time for iteration [s]
+    tb_init = 10.0 # initial firing duration time for iteration [s]
     Pc_init = 3.0e+6 # initial chamber pressure for iteration [Pa]
     a = 1.17063e-4 # regression coefficient [m^3/kg]
     n = 0.62 # oxidizer mass flux exponent
@@ -781,9 +782,14 @@ if __name__ == "__main__":
     Ptf = 1.5e+6 # final tank pressure [Pa]
     Vt = 15.0e-3 # oxidizer volume [m^3]
     Do = 1.0e-3
-    Cd = 0.82 *64
-    Lf = 820e-3 # fuel length [m]
-    Dfi = 100e-3 # initial fuel port diameter [m]
+#    Cd = 0.82 *64
+    Cd = 0.82 *56
+#    Np = 1
+    Np = 13
+#    Lf = 820e-3 # fuel length [m]
+    Lf = 1045e-3 # fuel length [m]
+#    Dfi = 100e-3 # initial fuel port diameter [m]
+    Dfi = 13.867e-3 # initial fuel port diameter [m]
     Dfo = 200e-3 # fuel outer diameter [m]
     rho_ox = 1190.0 # oxidizer mass density [kg/m^3]
     rho_f = 820 # fuel density [kg/m^3]
@@ -792,7 +798,7 @@ if __name__ == "__main__":
     Pa = 0.1013e+6 # ambient pressure [Pa]
     rn = 0.0 # nozzle throat regression rate [m]
     theta = 10 # nozzle opening half-angle [deg]
-#    inst = Single_tank(cea_fldpath, dt, tb_init, Pc_init, a, n, eta, Pti, Ptf, Vt, Do, Cd, Lf, Dfi, Dfo, rho_ox, rho_f, Dti, De, Pa, rn, theta)
+#    inst = Single_tank(cea_fldpath, dt, tb_init, Pc_init, a, n, eta, Pti, Ptf, Vt, Do, Cd, Np, Lf, Dfi, Dfo, rho_ox, rho_f, Dti, De, Pa, rn, theta)
 #    inst.exe_sim()
 #    dat = inst.df
     
@@ -805,7 +811,7 @@ if __name__ == "__main__":
     Lpg = 200e-3 # straight pipe length [m]
     eps = 0.0015e-3 # equivalent sand roughness [m]
     zeta = 0.25 # combined pressure loss coefficient
-#    inst2 = Double_tank(cea_fldpath, dt, tb_init, Pc_init, a, n, eta, Pgi, Vt, Vg, Do, Cd, Lf, Dfi, Dfo, rho_ox, rho_f, rho_g, mu_g, gamma_g, Dpg, Lpg, eps, zeta, Dti, De, Pa, rn, theta)
+#    inst2 = Double_tank(cea_fldpath, dt, tb_init, Pc_init, a, n, eta, Pgi, Vt, Vg, Do, Cd, Np, Lf, Dfi, Dfo, rho_ox, rho_f, rho_g, mu_g, gamma_g, Dpg, Lpg, eps, zeta, Dti, De, Pa, rn, theta)
 #    inst2.exe_sim()
 #    dat2 = inst2.df
     
@@ -813,12 +819,12 @@ if __name__ == "__main__":
     Pt_reg = 5.0e+6 # regulator set pressure [Pa]
     cv_reg = 0.5e-6 # Cv value of ragulator [m^2]
     Rg = 8.314/4.002602 # specific gas constant of pressurize gas [J/kg/K]
-#    inst3 = Double_tank_regulator(cea_fldpath, dt, tb_init, Pc_init, a, n, eta, Pgi, Tgi, Pt_reg, cv_reg, Vt, Vg, Do, Cd, Lf, Dfi, Dfo, rho_ox, rho_f, Rg, rho_g, mu_g, gamma_g, Dpg, Lpg, eps, zeta, Dti, De, Pa, rn, theta)
+#    inst3 = Double_tank_regulator(cea_fldpath, dt, tb_init, Pc_init, a, n, eta, Pgi, Tgi, Pt_reg, cv_reg, Vt, Vg, Do, Cd, Np, Lf, Dfi, Dfo, rho_ox, rho_f, Rg, rho_g, mu_g, gamma_g, Dpg, Lpg, eps, zeta, Dti, De, Pa, rn, theta)
 #    inst3.exe_sim()
 #    dat3 = inst3.df
     
     cpg = 5237 # specific heat capacity [J/kg/K]
-    inst4 = Double_tank_regulator_tmp(cea_fldpath, dt, tb_init, Pc_init, a, n, eta, Pgi, Tgi, Pt_reg, cv_reg, Vt, Vg, Do, Cd, Lf, Dfi, Dfo, rho_ox, rho_f, Rg, rho_g, mu_g, gamma_g, cpg, Dpg, Lpg, eps, zeta, Dti, De, Pa, rn, theta)
+    inst4 = Double_tank_regulator_tmp(cea_fldpath, dt, tb_init, Pc_init, a, n, eta, Pgi, Tgi, Pt_reg, cv_reg, Vt, Vg, Do, Cd, Np, Lf, Dfi, Dfo, rho_ox, rho_f, Rg, rho_g, mu_g, gamma_g, cpg, Dpg, Lpg, eps, zeta, Dti, De, Pa, rn, theta)
     inst4.exe_sim()
     dat4 = inst4.df
     
