@@ -348,9 +348,12 @@ class Single_tank():
     
     def func_Df(self, Df, t, mox):
         dMf = self.func_Mf(t, mox, Df) - self.func_Mf(t-self.dt, mox, Df)
-        Df_cal = np.sqrt(4*dMf/(np.pi*self.rho_f*self.Lf) + np.power(self.Df, 2))
-        self._tmp_Df_ = Df
-        return(Df)
+        if t <= 0:
+            Df_cal = Df
+        else:
+            Df_cal = np.sqrt(4*dMf/(np.pi*self.rho_f*self.Lf) + np.power(self.Df[-1], 2))
+#        self._tmp_Df_ = Df
+        return(Df_cal)
 
 
     def func_Mf(self, t, mox, Df):
@@ -778,7 +781,7 @@ if __name__ == "__main__":
     Ptf = 1.5e+6 # final tank pressure [Pa]
     Vt = 15.0e-3 # oxidizer volume [m^3]
     Do = 1.0e-3
-    Cd = 0.6 *87
+    Cd = 0.82 *64
     Lf = 820e-3 # fuel length [m]
     Dfi = 100e-3 # initial fuel port diameter [m]
     Dfo = 200e-3 # fuel outer diameter [m]
