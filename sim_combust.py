@@ -775,9 +775,12 @@ if __name__ == "__main__":
     dt = 0.01 # time interval [s]
     tb_init = 10.0 # initial firing duration time for iteration [s]
     Pc_init = 3.0e+6 # initial chamber pressure for iteration [Pa]
-    a = 1.17063e-4 # regression coefficient [m^3/kg]
-    n = 0.62 # oxidizer mass flux exponent
-    eta = 0.7
+#    a = 1.17063e-4 # regression coefficient [m^3/kg]
+    a = 4.19347377e-5 # regression coefficient [m^3/kg]
+#    n = 0.62 # oxidizer mass flux exponent
+    n = 0.498 # oxidizer mass flux exponent
+#    eta = 0.7
+    eta = 0.8
     Pti = 5.0e+6 # initial tank pressure [Pa]
     Ptf = 1.5e+6 # final tank pressure [Pa]
     Vt = 15.0e-3 # oxidizer volume [m^3]
@@ -792,7 +795,8 @@ if __name__ == "__main__":
     Dfi = 13.867e-3 # initial fuel port diameter [m]
     Dfo = 200e-3 # fuel outer diameter [m]
     rho_ox = 1190.0 # oxidizer mass density [kg/m^3]
-    rho_f = 820 # fuel density [kg/m^3]
+#    rho_f = 820 # fuel density [kg/m^3]
+    rho_f = 950 # fuel density [kg/m^3]
     Dti = 44.0e-3 # initial nozzle throat diameter [m]
     De = 103.0e-3 # nozzle exit diameter [m]
     Pa = 0.1013e+6 # ambient pressure [Pa]
