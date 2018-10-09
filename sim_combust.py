@@ -250,13 +250,18 @@ class Single_tank():
     def func_error_mox(self, mox, t, tb):
         mox_cal = self.func_mox(mox, t, tb)
         diff = mox - mox_cal
-        error = diff/mox_cal
+#        error = diff/mox_cal
+        error = diff/mox
         return(error)
     
     def func_mox(self, mox, t, tb):
         Pt = self.func_Pt(t, tb, mox)
         Pc = self.iterat_Pc(t, tb, mox)
-        mox_cal = self.Cd*(np.pi*np.power(self.Do, 2)/4)*np.sqrt(2*self.rho_ox*(Pt-Pc))
+        if Pt-Pc < 0:
+#            mox_cal = -1*self.Cd*(np.pi*np.power(self.Do, 2)/4)*np.sqrt(2*self.rho_ox*np.abs(Pt-Pc))
+            mox_cal = 0
+        else:
+            mox_cal = self.Cd*(np.pi*np.power(self.Do, 2)/4)*np.sqrt(2*self.rho_ox*(Pt-Pc))
         self._tmp_mox_ = mox
         return(mox_cal)
 #        mf = self.func_mf(t, mox)
@@ -311,9 +316,9 @@ class Single_tank():
 #        mox = self.func_mox(t, Pc, tb)
         Df = self.iterat_Df(t, mox)
         mf = self.func_mf(t, mox, Df)
-        if mf == 0 and mox>0:
+        if mf <= 0 and mox>0:
             of = self.of_max
-        elif mox==0 and mox==0:
+        elif mox <= 0:
             of = 0
         else:
             of = mox/mf
@@ -331,13 +336,16 @@ class Single_tank():
 
     def iterat_Df(self, t, mox, maxiter=100):
         try:
-            if t == 0:
+            if t <= 0:
                 Df_init = self.Dfi
             else:
                 Df_init = self.Df[-1]
             Df = optimize.newton(self.func_error_Df, Df_init, maxiter=maxiter, tol=1.0e-3, args=(t, mox))
         except:
-            Df = optimize.brentq(self.func_error_Df, self.Dfi, self.Dfo, xtol=1.0e-3, maxiter=maxiter, args=(t, mox))
+            if t <= 0:
+                Df_init = self.Dfi
+            else:
+                Df = optimize.brentq(self.func_error_Df, self.Dfi, self.Dfo, xtol=1.0e-3, maxiter=maxiter, args=(t, mox))
         self._tmp_Df_ = Df
         return(Df)
 
@@ -389,7 +397,10 @@ class Single_tank():
 
 
     def func_mf(self, t, mox, Df):
-        r = self.func_regression(Df, mox)
+        if mox <=0:
+            r = 0
+        else:
+            r = self.func_regression(Df, mox)
         mf = self.Np*self.Lf*np.pi*Df*self.rho_f*r
         self._tmp_mf_ = mf
         return(mf)
@@ -788,11 +799,13 @@ if __name__ == "__main__":
 #    Cd = 0.82 *64
     Cd = 0.82 *56
 #    Np = 1
+#    Np = 5
     Np = 13
 #    Lf = 820e-3 # fuel length [m]
     Lf = 1045e-3 # fuel length [m]
 #    Dfi = 100e-3 # initial fuel port diameter [m]
-    Dfi = 13.867e-3 # initial fuel port diameter [m]
+#    Dfi = 20e-3 # initial fuel port diameter [m]
+    Dfi = 2*13.867e-3 # initial fuel port diameter [m]
     Dfo = 200e-3 # fuel outer diameter [m]
     rho_ox = 1190.0 # oxidizer mass density [kg/m^3]
 #    rho_f = 820 # fuel density [kg/m^3]
