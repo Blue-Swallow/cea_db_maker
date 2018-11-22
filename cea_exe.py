@@ -119,7 +119,7 @@ class CEA_execute:
         command = os.path.join(cea_dirpath,inp_fname) + "\n"
         p = Popen(cea_path, stdin=PIPE, stdout=PIPE)
         p.communicate(input=bytes(command,"utf-8"))
-        time.sleep(0.1)
+#        time.sleep(0.1)
         p.wait()
         os.chdir("..")
         return

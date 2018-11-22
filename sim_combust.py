@@ -88,13 +88,16 @@ class Single_tank():
 #            pass
             self.tb = optimize.brentq(self.func_error_tb, tb_min, tb_max, xtol=1.0e-2, maxiter=maxiter, full_output=False)
         self.df = pd.DataFrame([], index=np.arange(0, self.tb+self.dt/2, self.dt))
+        length = self.Pc.size
         self.df["Pc"] = self.Pc
         self.df["Pt"] = self.Pt    
-        self.df["Pg"] = self.Pg
+        if length == self.vg.size:
+            self.df["Pg"] = self.Pg
         self.df["mox"] = self.mox
         self.df["Mox"] = self.Mox
         self.df["Vox"] = self.Vox
-        self.df["vg"] = self.vg
+        if length == self.vg.size:
+            self.df["vg"] = self.vg
         self.df["mf"] = self.mf
         self.df["Mf"] = self.Mf
         self.df["Df"] = self.Df
@@ -233,7 +236,6 @@ class Single_tank():
         self.cstr = np.append(self.cstr, self._tmp_cstr_)
         self.Mox = np.append(self.Mox, self._tmp_Mox_)
         self.Vox = np.append(self.Vox, self._tmp_Vox_)
-        self.vg = np.append(self.vg, self._tmp_vg_)
         self.Df = np.append(self.Df, self._tmp_Df_)
         self._tmp_Mf_ = self.func_Mf(t ,mox, self._tmp_Df_)
         self.Mf = np.append(self.Mf, self._tmp_Mf_)
@@ -242,9 +244,15 @@ class Single_tank():
         self.mf = np.append(self.mf, self._tmp_mf_)
         self.Dt = np.append(self.Dt, self._tmp_Dt_)
         self.Pt = np.append(self.Pt, self._tmp_Pt_)
-        self.Pg = np.append(self.Pg, self._tmp_Pg_)
-        self.Tt = np.append(self.Tt, self._tmp_Tt_)
-        self.Tg = np.append(self.Tg, self._tmp_Tg_)
+        if hasattr(Single_tank, "_tmp_Pg_"):
+            self.Pg = np.append(self.Pg, self._tmp_Pg_)  
+        if hasattr(Single_tank, "_tmp_vg_"):
+            self.vg = np.append(self.vg, self._tmp_vg_)  
+        if hasattr(Single_tank, "_tmp_Tt_"):
+            self.Tt = np.append(self.Tt, self._tmp_Tt_)
+        if hasattr(Single_tank, "_tmp_Tg_"):
+            self.Tg = np.append(self.Tg, self._tmp_Tg_)
+
 
 
     def func_error_mox(self, mox, t, tb):
@@ -257,11 +265,11 @@ class Single_tank():
     def func_mox(self, mox, t, tb):
         Pt = self.func_Pt(t, tb, mox)
         Pc = self.iterat_Pc(t, tb, mox)
-        if Pt-Pc < 0:
-#            mox_cal = -1*self.Cd*(np.pi*np.power(self.Do, 2)/4)*np.sqrt(2*self.rho_ox*np.abs(Pt-Pc))
-            mox_cal = 0
-        else:
-            mox_cal = self.Cd*(np.pi*np.power(self.Do, 2)/4)*np.sqrt(2*self.rho_ox*(Pt-Pc))
+#        if Pt-Pc < 0:
+##            mox_cal = -1*self.Cd*(np.pi*np.power(self.Do, 2)/4)*np.sqrt(2*self.rho_ox*np.abs(Pt-Pc))
+#            mox_cal = 0
+#        else:
+        mox_cal = self.Cd*(np.pi*np.power(self.Do, 2)/4)*np.sqrt(2*self.rho_ox*(Pt-Pc))
         self._tmp_mox_ = mox
         return(mox_cal)
 #        mf = self.func_mf(t, mox)
@@ -782,42 +790,48 @@ class Double_tank_regulator_tmp(Single_tank):
 
 if __name__ == "__main__":
 #    cea_fldpath = os.path.join("cea_db", "N2O_PE", "csv_database")
-    cea_fldpath = os.path.join("cea_db", "LOX_PE", "csv_database")
+    cea_fldpath = os.path.join("cea_db", "N2O_PE", "csv_database")
     dt = 0.01 # time interval [s]
     tb_init = 10.0 # initial firing duration time for iteration [s]
     Pc_init = 3.0e+6 # initial chamber pressure for iteration [Pa]
 #    a = 1.17063e-4 # regression coefficient [m^3/kg]
-    a = 4.19347377e-5 # regression coefficient [m^3/kg]
+#    a = 4.19347377e-5 # regression coefficient [m^3/kg]
+    a = 1.55e-4 # regression coefficient [m^3/kg]
 #    n = 0.62 # oxidizer mass flux exponent
-    n = 0.498 # oxidizer mass flux exponent
-#    eta = 0.7
-    eta = 0.8
+#    n = 0.498 # oxidizer mass flux exponent
+    n = 0.5 # oxidizer mass flux exponent
+    eta = 0.7
+#    eta = 0.8
     Pti = 5.0e+6 # initial tank pressure [Pa]
-    Ptf = 1.5e+6 # final tank pressure [Pa]
-    Vt = 15.0e-3 # oxidizer volume [m^3]
+    Ptf = 2.5e+6 # final tank pressure [Pa]
+#    Vt = 15.0e-3 # oxidizer volume [m^3]
+    Vt = 27.0e-3 # oxidizer volume [m^3]
     Do = 1.0e-3
 #    Cd = 0.82 *64
-    Cd = 0.82 *56
-#    Np = 1
+#    Cd = 0.82 *56
+    Cd = 0.3 *262
+    Np = 1
 #    Np = 5
-    Np = 13
+#    Np = 13
 #    Lf = 820e-3 # fuel length [m]
-    Lf = 1045e-3 # fuel length [m]
+#    Lf = 1044.5e-3 # fuel length [m]
+    Lf = 600e-3 # fuel length [m]
 #    Dfi = 100e-3 # initial fuel port diameter [m]
-#    Dfi = 20e-3 # initial fuel port diameter [m]
-    Dfi = 2*13.867e-3 # initial fuel port diameter [m]
+#    Dfi = 2*13.867e-3 # initial fuel port diameter [m]
+    Dfi = 100e-3 # initial fuel port diameter [m]
     Dfo = 200e-3 # fuel outer diameter [m]
-    rho_ox = 1190.0 # oxidizer mass density [kg/m^3]
-#    rho_f = 820 # fuel density [kg/m^3]
-    rho_f = 950 # fuel density [kg/m^3]
-    Dti = 44.0e-3 # initial nozzle throat diameter [m]
-    De = 103.0e-3 # nozzle exit diameter [m]
+#    rho_ox = 1190.0 # oxidizer mass density [kg/m^3]
+    rho_ox = 852.0 # oxidizer mass density [kg/m^3]
+    rho_f = 820 # fuel density [kg/m^3]
+#    rho_f = 950 # fuel density [kg/m^3]
+    Dti = 44.5e-3 # initial nozzle throat diameter [m]
+    De = 101.0e-3 # nozzle exit diameter [m]
     Pa = 0.1013e+6 # ambient pressure [Pa]
     rn = 0.0 # nozzle throat regression rate [m]
     theta = 10 # nozzle opening half-angle [deg]
-#    inst = Single_tank(cea_fldpath, dt, tb_init, Pc_init, a, n, eta, Pti, Ptf, Vt, Do, Cd, Np, Lf, Dfi, Dfo, rho_ox, rho_f, Dti, De, Pa, rn, theta)
-#    inst.exe_sim()
-#    dat = inst.df
+    inst = Single_tank(cea_fldpath, dt, tb_init, Pc_init, a, n, eta, Pti, Ptf, Vt, Do, Cd, Np, Lf, Dfi, Dfo, rho_ox, rho_f, Dti, De, Pa, rn, theta)
+    inst.exe_sim()
+    dat = inst.df
     
     Pgi = 15.0e+6 # initial gas tank pressure [Pa]
     Vg = 3.4e-3 # pressurize gas tank volume [m^3]
@@ -841,9 +855,9 @@ if __name__ == "__main__":
 #    dat3 = inst3.df
     
     cpg = 5237 # specific heat capacity [J/kg/K]
-    inst4 = Double_tank_regulator_tmp(cea_fldpath, dt, tb_init, Pc_init, a, n, eta, Pgi, Tgi, Pt_reg, cv_reg, Vt, Vg, Do, Cd, Np, Lf, Dfi, Dfo, rho_ox, rho_f, Rg, rho_g, mu_g, gamma_g, cpg, Dpg, Lpg, eps, zeta, Dti, De, Pa, rn, theta)
-    inst4.exe_sim()
-    dat4 = inst4.df
+#    inst4 = Double_tank_regulator_tmp(cea_fldpath, dt, tb_init, Pc_init, a, n, eta, Pgi, Tgi, Pt_reg, cv_reg, Vt, Vg, Do, Cd, Np, Lf, Dfi, Dfo, rho_ox, rho_f, Rg, rho_g, mu_g, gamma_g, cpg, Dpg, Lpg, eps, zeta, Dti, De, Pa, rn, theta)
+#    inst4.exe_sim()
+#    dat4 = inst4.df
     
 #    import matplotlib.pyplot as plt
 #    Pc_range = np.arange(0.2e+6, 10.0e+6, 0.1e+6)
