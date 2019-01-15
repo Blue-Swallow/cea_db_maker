@@ -132,6 +132,18 @@ class Read_datset:
             """
             Pc = Pc*1.0e-6
             cstr_array = func_interp(self.of, Pc)
+            def cea_exe(of, Pc):
+                """ Using single execute of CEA instead of not using extraporation 
+                
+                Parameter
+                --------
+                of: float
+                    O/F
+                Pc: float
+                    chamber pressure [MPa]
+                """
+                pass
+            
             def extrapfunc_exp(of, a, b,diff, ddiff):
                 theta = ddiff/diff
                 p = np.log(diff/theta)/theta + a
@@ -173,7 +185,9 @@ class Read_datset:
 #                dddiff_begin = 
                 a = self.of.min()
                 b = cstr_array[0]
-                if extraporate=="exp":
+                if extraporate == False:
+                    val = cea_exe(of, Pc)
+                elif extraporate=="exp":
                     val = extrapfunc_exp(of, a, b, diff_begin, ddiff_begin)
                 elif extraporate=="exp2":
                     val = extrapfunc_exp2(of, a, b, diff_begin, ddiff_begin)
@@ -191,7 +205,9 @@ class Read_datset:
 #                dddiff_end = 
                 a = self.of.max()
                 b = cstr_array[len(cstr_array)-1]
-                if extraporate=="exp":
+                if extraporate == False:
+                    val = cea_exe(of, Pc)
+                elif extraporate=="exp":
                     val = extrapfunc_exp(of, a, b, diff_end, ddiff_end)
                 elif extraporate=="exp2":
                     val = extrapfunc_exp2(of, a, b, diff_end, ddiff_end)
@@ -209,7 +225,7 @@ class Read_datset:
         
         return(func)
         
-    def plot(self, param_name, pickup_num):    
+    def plot(self, param_name, of_range, Pc_plot):    
         """
         Plot graph about relationship of param to of and Pc
         
@@ -218,34 +234,43 @@ class Read_datset:
         param_name: string
             Parameter name which is a dataset file name \n
             e.g. "CSTAR", "GAMMAs", "T_c", "Cp_c"
-
-        pickup_num: int
-            The number of "Pc" picked up to draw a graph 
+        
+        of_range: list
+            [minimum of, maximum of]
+        
+        Pc_plot: 1-ndarray
+            This array contain the chamber pressure [Pa] which you want to plot a graph
         """
-        if pickup_num > len(self.Pc):
-            pass
-        else:
-            Pc_nlm = (self.Pc[-1]-self.Pc[0])/(pickup_num-1)
-            pick_idx = lambda i: np.abs(np.asarray(self.Pc)-(Pc_nlm*i + self.Pc[0])).argmin()
-            idx = [pick_idx(i) for i in range(pickup_num)]
-
-        array = self._read_csv_(param_name)        
+        func = self.gen_func(param_name, extraporate="linear")
         plt.rcParams["font.family"] = "Times New Roman"
         plt.rcParams["font.size"] = 17
         fig = plt.figure(figsize=(8,6))
         ax = fig.add_subplot(111)
-        for i in idx:
-            ax.plot(self.of, array[:,i], label=r"$P_c$ = {} MPa".format(self.Pc[i]))
+        for Pc in Pc_plot:
+            ax.plot(self.of, np.array([func(of,Pc) for of in self.of]), label=r"$P_c$ = {} MPa".format(round(Pc*1.0e-6, 2)))
         ax.legend(loc="best", fontsize=16)
         ax.set_xlabel(r"$O/F$")
         ax.set_ylabel("${}$".format(param_name))
+        ax.set_xlim(of_range[0], of_range[1])
+        imgf_name = os.path.join(self.fld_path, param_name + ".jpg")
+        plt.savefig(imgf_name)
 
 
 if __name__ == "__main__":
 
-    dbfld_path = os.path.join("cea_db", "sample", "csv_database")
-    inst2 = Read_datset(dbfld_path)
-    func = inst2.gen_func("CSTAR", extraporate="linear")
-    func(100, 1.0e+6)
-    of_range = np.arange(0.01, 100, 0.1)
-    plt.plot(of_range, np.array([func(of, 1.0e+6) for of in of_range]))
+    while(True):
+        fld_name = input("Input Folder Name (e.g. \"O2+PMMA\")\n>> ")
+        dbfld_path = os.path.join("cea_db", fld_name, "csv_database")
+        if os.path.exists(dbfld_path):
+            inst = Read_datset(dbfld_path)
+            param_name = input("\nInput parameter name (That is same as csv file name.)\n>> ")
+            print("\n\nPlease input the range of O/F where you want to plot.\ne.g. If the range is 0.5 to 5.0 \n0.5 5.0")
+            of_range = list(map(lambda x: float(x) ,input(">> ").split()))
+            print("\n\nPlease input the range of Pc where you want to plot.\nRange: 0.2 ~ 99.99, Minimum interval: 00.1 MPa\ne.g. If the range is 0.5 to 5.1 MPa and the interval is 0.1 MPa\n0.5 5.0 0.1")
+            Pc_range = list(map(lambda x: float(x)*1.0e+6 ,input(">> ").split()))
+            Pc_plot = np.arange(Pc_range[0], Pc_range[1], Pc_range[2])
+            inst.plot(param_name, of_range, Pc_plot)
+            break
+        else:
+            print("There is no such a dataset file/n{}".format(dbfld_path))
+
