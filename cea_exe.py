@@ -223,7 +223,7 @@ class Read_output:
     Class to read ".out" file
     """
     cond_param = ["O/F", "Pc", "PHI"]
-    therm_param = ["P", "T", "RHO", "H", "U", "G", "S", "M", "Cp", "GAMMAs", "SON", "MACH"]
+    therm_param = ["P", "T", "RHO", "H", "U", "G", "S", "M", "MW", "Cp", "GAMMAs", "SON", "MACH"]
     rock_param  = ["CSTAR", "CF", "Ivac", "Isp"]
     trans_param = ["VISC", "CONDUCTIVITY", "PRANDTL"]
     
@@ -304,6 +304,8 @@ class Read_output:
         trans_param = self.trans_param
         emp_list = ["" for i in range(len(trans_param))]
         trans_param = dict(zip(trans_param, emp_list))
+        
+        mole_fraction = {}
     
         line = str("null")
         flag_cp = False
@@ -314,6 +316,8 @@ class Read_output:
             warnings.filterwarnings("ignore") # ignore Further Warnings about "empty-string"
             dat = re.split("[\s=]*",line)
             del(dat[0])
+            if (len(dat) >= 1):
+                del(dat[-1])
             if(len(dat)==0): # empty line
                 pass
             else: # not-empty line
@@ -339,9 +343,17 @@ class Read_output:
                     elif(count_trans < 3):
                         trans_param[dat_head] = self._vextract_(dat)
                         count_trans += 1
-#                elif(dat_head == "MOLE"):
-#                    flag = True
-#                elif
+                elif(dat_head == "MOLE"):
+                    flag_mole = True
+                    continue
+                elif(dat_head == "*"):
+                    flag_mole = False
+                elif(flag_mole):
+                    for i in range(len(dat)):
+                        if i%2 == 0:
+                            mole_fraction[dat[i]] = np.nan
+                        else:
+                            mole_fraction[dat[i-1]] = float(dat[i])
                     
         file.close()
 
@@ -365,10 +377,15 @@ class Read_output:
     #    Ispvac = rock_ntpl(t=rock_param["Ivac"][0], e=rock_param["Ivac"][1])
     #    Isp = rock_ntpl(t=rock_param["Isp"][0], e=rock_param["Isp"][1])    
     
-        return(cond_param, therm_param, trans_param, rock_param)
+        return(cond_param, therm_param, trans_param, rock_param, mole_fraction)
 
 
 if __name__ == "__main__":
     inst = CEA_execute()
-    of, Pc, value_c, value_t, value_e, value_rock = inst.all_exe()
+#    of, Pc, value_c, value_t, value_e, value_rock = inst.all_exe()
+    fld_path = 'D:\\T.J\\Github\\HybridRocketCombustionSim\\Develop\\RockCombustSim\\cea_db\\LOX_PE\\out'
+    cea_fname = 'Pc_00.20__of_00.10'
+    Read = Read_output(fld_path)
+    result = Read.read_out(cea_fname)
+
 
