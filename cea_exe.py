@@ -166,16 +166,16 @@ class CEA_execute:
                 value_t = copy.deepcopy(therm)
                 value_e = copy.deepcopy(therm)
                 for j in therm:
-                    value_c[j] = np.empty((0,0), float)
-                    value_t[j] = np.empty((0,0), float)
-                    value_e[j] = np.empty((0,0), float)                    
+                    value_c[j] = np.zeros((0,0), float)
+                    value_t[j] = np.zeros((0,0), float)
+                    value_e[j] = np.zeros((0,0), float)                    
                 value_rock = copy.deepcopy(rock)
                 for j in rock:
-                    value_rock[j] = np.empty((0,0), float)
+                    value_rock[j] = np.zeros((0,0), float)
                 value_mole = copy.deepcopy(mole)
                 keys_mole = list(mole.keys())
                 for j in mole:
-                    value_mole[j] = np.empty((0,0), float)
+                    value_mole[j] = np.zeros((0,0), float)
 
 #            list_combine = list(mole.keys()) + keys_mole
 #            list_only = [x for x in list_combine if list_combine.count(x) == 1]
@@ -185,37 +185,37 @@ class CEA_execute:
                 #extend row of array when o/f is renewed
                 of.append(cond["O/F"])
                 for j in therm:
-                    value_c[j] = np.append(value_c[j], np.empty((1,value_c[j].shape[1]), float), axis=0)
-                    value_t[j] = np.append(value_t[j], np.empty((1,value_t[j].shape[1]), float), axis=0)
-                    value_e[j] = np.append(value_e[j], np.empty((1,value_e[j].shape[1]), float), axis=0)
+                    value_c[j] = np.append(value_c[j], np.zeros((1,value_c[j].shape[1]), float), axis=0)
+                    value_t[j] = np.append(value_t[j], np.zeros((1,value_t[j].shape[1]), float), axis=0)
+                    value_e[j] = np.append(value_e[j], np.zeros((1,value_e[j].shape[1]), float), axis=0)
                 for j in rock:
-                    value_rock[j] = np.append(value_rock[j], np.empty((1,value_rock[j].shape[1]), float), axis=0)
+                    value_rock[j] = np.append(value_rock[j], np.zeros((1,value_rock[j].shape[1]), float), axis=0)
                 for j in mole:
                     if j not in keys_mole:
-                        value_mole[j] = np.empty((len(of), len(Pc)), float)
+                        value_mole[j] = np.zeros((len(of), len(Pc)), float)
 #                        keys_mole.append(j)
                     else:
-                        value_mole[j] = np.append(value_mole[j], np.empty((1,value_mole[j].shape[1]), float), axis=0)
+                        value_mole[j] = np.append(value_mole[j], np.zeros((1,value_mole[j].shape[1]), float), axis=0)
                 for i in list_only:
-                    value_mole[i] = np.append(value_mole[i], np.empty((1,value_mole[i].shape[1]), float), axis=0)
+                    value_mole[i] = np.append(value_mole[i], np.zeros((1,value_mole[i].shape[1]), float), axis=0)
 
             if cond["Pc"] not in Pc:
                 #extend column of array when Pc is renewed
                 Pc.append(cond["Pc"])
                 for j in therm:
-                    value_c[j] = np.append(value_c[j], np.empty((value_c[j].shape[0],1), float), axis=1)
-                    value_t[j] = np.append(value_t[j], np.empty((value_t[j].shape[0],1), float), axis=1)
-                    value_e[j] = np.append(value_e[j], np.empty((value_e[j].shape[0],1), float), axis=1)
+                    value_c[j] = np.append(value_c[j], np.zeros((value_c[j].shape[0],1), float), axis=1)
+                    value_t[j] = np.append(value_t[j], np.zeros((value_t[j].shape[0],1), float), axis=1)
+                    value_e[j] = np.append(value_e[j], np.zeros((value_e[j].shape[0],1), float), axis=1)
                 for j in rock:
-                    value_rock[j] = np.append(value_rock[j], np.empty((value_rock[j].shape[0],1), float), axis=1)
+                    value_rock[j] = np.append(value_rock[j], np.zeros((value_rock[j].shape[0],1), float), axis=1)
                 for j in mole:
                     if j not in keys_mole:
-                        value_mole[j] = np.empty((len(of), len(Pc)), float)
+                        value_mole[j] = np.zeros((len(of), len(Pc)), float)
 #                        keys_mole.append(j)
                     else:
-                        value_mole[j] = np.append(value_mole[j], np.empty((value_mole[j].shape[0],1), float), axis=1)
+                        value_mole[j] = np.append(value_mole[j], np.zeros((value_mole[j].shape[0],1), float), axis=1)
                 for i in list_only:
-                    value_mole[i] = np.append(value_mole[i], np.empty((value_mole[i].shape[0],1), float), axis=1)
+                    value_mole[i] = np.append(value_mole[i], np.zeros((value_mole[i].shape[0],1), float), axis=1)
 
 
             p = of.index(cond["O/F"])
@@ -231,7 +231,7 @@ class CEA_execute:
             for j in mole:
                 #Substitute each mole fraction
                 if j not in keys_mole:
-                    value_mole[j] = np.empty((len(of), len(Pc)), float)
+                    value_mole[j] = np.zeros((len(of), len(Pc)), float)
                     value_mole[j][p,q] = mole[j]
                     keys_mole.append(j)
                 else:
