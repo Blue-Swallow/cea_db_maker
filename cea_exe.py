@@ -355,7 +355,7 @@ class Read_output:
         while line:
             line = file.readline()
             warnings.filterwarnings("ignore") # ignore Further Warnings about "empty-string"
-            dat = re.split("[\s=]*",line)
+            dat = re.split("[\s=]+",line)
             del(dat[0])
             if (len(dat) >= 1):
                 del(dat[-1])
