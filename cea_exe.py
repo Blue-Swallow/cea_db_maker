@@ -69,10 +69,10 @@ class CEA_execute:
                 pass
             else:
                 os.mkdir(dbfld_path) #make output folder
-            if os.path.exists(os.path.join(dbfld_path, "MoleFraction")):
-                pass
-            else:
-                os.mkdir(os.path.join(dbfld_path, "MoleFraction")) #make output folder of mole_fraction
+            # if os.path.exists(os.path.join(dbfld_path, "MoleFraction")):
+            #     pass
+            # else:
+            #     os.mkdir(os.path.join(dbfld_path, "MoleFraction")) #make output folder of mole_fraction
         else:
             sys.exit("There is no such a directory, \n\"{}\"".format(self.fld_path))
         return(cadir, inpfld_path, outfld_path, dbfld_path)
@@ -98,6 +98,9 @@ class CEA_execute:
         """
         if len(point)==0:
             for i in val_dict:
+                dir = os.path.dirname(os.path.join(dbfld_path, i + ".csv"))
+                if not os.path.exists(dir):
+                    os.mkdir(dir)
                 df = pd.DataFrame(val_dict[i], index=of, columns=Pc)
                 df.to_csv(os.path.join(dbfld_path, i) + ".csv")
         else:
@@ -175,7 +178,9 @@ class CEA_execute:
                 value_mole = copy.deepcopy(mole)
                 keys_mole = list(mole.keys())
                 for j in mole:
-                    value_mole[j] = np.zeros((0,0), float)
+                    # value_mole[j] = np.zeros((0,0), float)
+                    for k in range(mole[j].__len__()):
+                        value_mole[j][k] = np.zeros((0,0), float)
 
 #            list_combine = list(mole.keys()) + keys_mole
 #            list_only = [x for x in list_combine if list_combine.count(x) == 1]
@@ -192,12 +197,16 @@ class CEA_execute:
                     value_rock[j] = np.append(value_rock[j], np.zeros((1,value_rock[j].shape[1]), float), axis=0)
                 for j in mole:
                     if j not in keys_mole:
-                        value_mole[j] = np.zeros((len(of), len(Pc)), float)
+                        value_mole[j] = [np.array([]) for k in range(mole[j].__len__())]
+                        for k in range(mole[j].__len__()):
+                            value_mole[j][k] = np.zeros((len(of), len(Pc)), float)
 #                        keys_mole.append(j)
                     else:
-                        value_mole[j] = np.append(value_mole[j], np.zeros((1,value_mole[j].shape[1]), float), axis=0)
+                        for k in range(mole[j].__len__()):
+                            value_mole[j][k] = np.append(value_mole[j][k], np.zeros((1,value_mole[j][k].shape[1]), float), axis=0)
                 for i in list_only:
-                    value_mole[i] = np.append(value_mole[i], np.zeros((1,value_mole[i].shape[1]), float), axis=0)
+                    for k in range(mole[j].__len__()):
+                        value_mole[i][k] = np.append(value_mole[i][k], np.zeros((1,value_mole[i][k].shape[1]), float), axis=0)
 
             if cond["Pc"] not in Pc:
                 #extend column of array when Pc is renewed
@@ -210,12 +219,16 @@ class CEA_execute:
                     value_rock[j] = np.append(value_rock[j], np.zeros((value_rock[j].shape[0],1), float), axis=1)
                 for j in mole:
                     if j not in keys_mole:
-                        value_mole[j] = np.zeros((len(of), len(Pc)), float)
+                        value_mole[j] = [np.array([]) for k in range(mole[j].__len__())]
+                        for k in range(mole[j].__len__()):
+                            value_mole[j][k] = np.zeros((len(of), len(Pc)), float)
 #                        keys_mole.append(j)
                     else:
-                        value_mole[j] = np.append(value_mole[j], np.zeros((value_mole[j].shape[0],1), float), axis=1)
+                        for k in range(mole[j].__len__()):
+                            value_mole[j][k] = np.append(value_mole[j][k], np.zeros((value_mole[j][k].shape[0],1), float), axis=1)
                 for i in list_only:
-                    value_mole[i] = np.append(value_mole[i], np.zeros((value_mole[i].shape[0],1), float), axis=1)
+                    for k in range(mole[j].__len__()):                    
+                        value_mole[i][k] = np.append(value_mole[i][k], np.zeros((value_mole[i][k].shape[0],1), float), axis=1)
 
 
             p = of.index(cond["O/F"])
@@ -231,20 +244,34 @@ class CEA_execute:
             for j in mole:
                 #Substitute each mole fraction
                 if j not in keys_mole:
-                    value_mole[j] = np.zeros((len(of), len(Pc)), float)
-                    value_mole[j][p,q] = mole[j]
+                    value_mole[j] = [np.array([]) for k in range(mole[j].__len__())]
+                    for k in range(mole[j].__len__()):
+                        value_mole[j][k] = np.zeros((len(of), len(Pc)), float)
+                        value_mole[j][k][p,q] = mole[j][k]
                     keys_mole.append(j)
                 else:
-                    value_mole[j][p,q] = mole[j]
-                    # if there is not molecular in the dict of mole, following operation input 0.0 in to database
-                    for i in list_only:
-                        value_mole[i][p,q] = 0.0
-                
+                    for k in range(mole[j].__len__()):
+                        value_mole[j][k][p,q] = mole[j][k]
+                        # if there is not molecular in the dict of mole, following operation input 0.0 in to database
+                        for i in list_only:
+                            value_mole[i][k][p,q] = 0.0
+        
+        # exchange the content of "value_mole"
+        tmp_mole = [np.nan for i in range(value_mole[j].__len__())]
+        for i in range(value_mole[j].__len__()):
+            tmp_dic = {}
+            for j in value_mole:
+                tmp_dic[j] = value_mole[j][i]
+            tmp_mole[i] = tmp_dic
+        value_mole = tmp_mole
+
         self._csv_out_(dbfld_path, of, Pc, value_c, point="c") #write out in csv-file
         self._csv_out_(dbfld_path, of, Pc, value_t, point="t") #write out in csv-file
         self._csv_out_(dbfld_path, of, Pc, value_e, point="e") #write out in csv-file
         self._csv_out_(dbfld_path, of, Pc, value_rock, point="") #write out in csv-file
-        self._csv_out_(os.path.join(dbfld_path, "MoleFraction"), of, Pc, value_mole, point="") #write out in csv-file
+        point_list_mole = ["Chamber", "Throat", "Exit"]
+        for i in range(value_mole.__len__()):
+            self._csv_out_(os.path.join(dbfld_path, "MoleFraction@" + point_list_mole[i]), of, Pc, value_mole[i], point="") #write mole-fraction out in csv-file
             
         return(of, Pc, value_c, value_t, value_e, value_rock, value_mole)
 
@@ -391,11 +418,13 @@ class Read_output:
                     flag_mole = False
                 elif(flag_mole):
                     for i in range(len(dat)):
-                        if i%2 == 0:
-                            key = dat[i].strip("*")
-                            mole_fraction[key] = np.nan
+                        tmp_dat = dat[i].replace(".", "")
+                        if tmp_dat.isdecimal():
+                            tmp_fraction.append(float(dat[i]))
                         else:
-                            mole_fraction[key] = float(dat[i])
+                            tmp_fraction = []
+                            key = dat[i].strip("*")
+                        mole_fraction[key] = tmp_fraction
         file.close()
 
     #    therm_ntpl = collections.namedtuple("thermval",["c","t","e"])    
