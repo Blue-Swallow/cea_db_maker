@@ -265,7 +265,7 @@ Input Folder Name (e.g. "O2+PMMA")
 >>test
 ~~~  
 
-* グラフを描画したいパラメータのデータベースファイル(.csv)名を入力する
+* グラフを描画したいパラメータのデータベースファイル(.csv)名を入力する (生成物のモル分率の場合親フォルダを含めたディレクトリ構造を入力．例）>> MoleFraction@Chamber/H2O )
 ~~~  
 Input parameter name (That is same as csv file name.)
 >> CSTAR

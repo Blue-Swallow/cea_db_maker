@@ -11,6 +11,16 @@ NASA-CEAをrocketモードで実行した結果をデータベース化し，さ
 * 複数の燃焼室圧力PcとO/Fの条件に対する，燃焼生成物(MoleFraction)を，各生成物毎にcsvファイルにデータベース化  
 * 作成したデータベースを基に，各パラメータとPc,O/Fとの関係をグラフとして出力  
 
+**特性排気速度 c***   
+<img src="docs/img/CSTAR.jpg" width="500">  
+
+**燃焼室における比熱比**   
+<img src="docs/img/GAMMAs_c.jpg" width="500">  
+
+**燃焼室におけるH2Oのモル分率**   
+<img src="docs/img/H2O.jpg" width="500">
+
+
 他にも，下記のようなメソッドを提供する  
 * 複数の燃焼室圧力とO/Fの条件に関して.inpファイルを大量生成
 * CEAのシングル実行
