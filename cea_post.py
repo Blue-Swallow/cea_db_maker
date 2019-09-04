@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Execute CEA calculation
+Read and utilize the result of CEA calculation
 """
 
 import numpy as np

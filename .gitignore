@@ -1,9 +1,10 @@
 *.inp
 *.out
-*.exe
-*.lib
 *.spec
 *.bat
+# *.csv
+# *.xlsx
+# *.ipynb
 design_EBHR.py
 Pc*.csv
 .*
