@@ -2,9 +2,9 @@
 *.out
 *.spec
 *.bat
-# *.csv
-# *.xlsx
-# *.ipynb
+*.csv
+*.xlsx
+*.ipynb
 design_EBHR.py
 Pc*.csv
 .*
