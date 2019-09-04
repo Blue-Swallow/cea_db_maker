@@ -1,6 +1,16 @@
-*.inp
-*.out
-*.exe
-*.lib
 *.spec
-*/
+*.bat
+.*
+_*
+build
+dist
+cea/*.inp
+cea/*.out
+cea_db/
+!cea_db/sample/
+# !cea_db/sample/MoleFraction@Chamber
+# !cea_db/sample/MoleFraction@Throat
+# !cea_db/sample/MoleFraction@Exit
+exp_dat/*
+!exp_dat/sample
+
