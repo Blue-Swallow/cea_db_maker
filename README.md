@@ -6,7 +6,6 @@ NASA-CEAをrocketモードで実行した結果をデータベース化し，さ
 
 
 ## 1. What "CEA-DB_Maker" Can Do for You　 
-___
 "CEA-DB_Maker"で出来ることを下記に示す．  
 * 複数の燃焼室圧力PcとO/Fの条件に対する，熱力学，ロケット性能，熱輸送パラメータを各パラメータ毎にcsvファイルにデータベース化  
 * 複数の燃焼室圧力PcとO/Fの条件に対する，燃焼生成物(MoleFraction)を，各生成物毎にcsvファイルにデータベース化  
@@ -19,17 +18,14 @@ ___
 * データベースを基に，任意の燃焼室圧力とO/Fに対するパラメータの補間値を返す関数の生成
 
 ## 2. Quick Start 
-____
 すべきことはほとんどないが，実行前の準備に関して解説する．
-* [日本語](docs/users_guide_jp) (coming soon)
+* 日本語　(coming soon)
 * English (coming soon)
 
 ## 3. Users Guide
-____
 実際の実行手順に関して解説する．
-* 日本語
+* [日本語](docs/users_guide_jp.md) 
 * English　（coming soon）
 
 ## 4. API Document
-____
 モジュールに実装した各メソッドについてのドキュメント (Coming soon)
