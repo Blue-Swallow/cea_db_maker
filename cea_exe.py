@@ -13,6 +13,7 @@ import tqdm
 from subprocess import*
 import warnings
 import time
+from cea_pre import make_inp_name, make_inp
 
 
 class CEA_execute:
@@ -137,12 +138,7 @@ class CEA_execute:
         os.chdir("..")
         return
 
-    def onetime_exe(self):
-        """
-        Execute CEA in onetime; preparing ".inp", execute CEA and read ".out" file
-        """
-        pass
-       
+      
     def all_exe(self):
         """
         Execute CEA calculation with respect to all conditon: Pc & o/f
@@ -280,6 +276,95 @@ class CEA_execute:
             self._csv_out_(os.path.join(dbfld_path, "MoleFraction@" + point_list_mole[i]), of, Pc, value_mole[i], point="") #write mole-fraction out in csv-file
             
         return(of, Pc, value_c, value_t, value_e, value_rock, value_mole)
+
+
+
+class CEA_onetime_execute(CEA_execute):
+    """
+    Class for executing CEA in onetime
+    base: CEA_execute
+    """
+    def __init__(self, fld_path=None):
+        super().__init__(fld_path=fld_path)
+        cadir = os.path.dirname(os.path.abspath(__file__))
+        self.cea_dirpath = os.path.join(cadir, "cea")
+
+    def onetime_exe_name(self, option, list_species, Pc, eps):
+        """
+        Execute CEA in onetime; preparing ".inp", execute CEA and read ".out" file,
+        when you assign several species and its fraction of amount.
+
+        Parameter
+        ---------
+        option: string
+            Calculation option, wtheher using equilibrium composition or frozen composition.
+            "equilibrium", "frozen nfz=1" or "frozen nfz=2"
+        list_species: list of dictionary,
+            The list has an information about chemical species as dict type; dict{"name":name, "wt":weight fraction, "temp":initial temperature, "h":enthalpy, "elem"element}
+        Pc: float,
+            Camberpressure, [Pa]
+        eps: float,
+            Area ratio of nozzle throat & exit, Ae/At
+        
+        Return
+        ----------
+        output: dictionary of dictionary
+            {"cond": dictionary of calculating condition,
+            "therm": dictionary of thermal property,
+            "trans": dictionary of transport property,
+            "rock": dictionary of rocket property,
+            "mole": dictionary of mole fraction}
+        """
+        Pc = Pc*1e-6    # convert unit Pa to MPa
+        make_inp_name(self.cea_dirpath, option, list_species, Pc, eps, fname="tmp")
+        output = self._exe_post_process()
+        return output
+
+    def onetime_exe_of(self, option, of, Pc, list_oxid, list_fuel, eps):
+        """
+        Execute CEA in onetime; preparing ".inp", execute CEA and read ".out" file,
+        when you assign only oxid and fuel species, and O/F.
+
+        Parameter
+        ---------
+        option: string
+            Calculation option, wtheher using equilibrium composition or frozen composition.
+            "equilibrium", "frozen nfz=1" or "frozen nfz=2"
+        of: float,
+            O/F
+        Pc: float,
+            Camberpressure, [Pa]
+        list_oxid: list,
+            The list has an information about oxidizer as dict type; dict{"name":name, "wt":weight fraction, "temp":initial temperature, "h":enthalpy, "elem"element}
+        list_fuel: list
+            The list has an information about fuel as dict type; dict{"name":name, "wt":weight fraction, "temp":initial temperature, "h":enthalpy, "elem"element}
+        eps: float,
+            Area ratio of nozzle throat & exit, Ae/At
+        
+        Return
+        ----------
+        output: dictionary of dictionary
+            {"cond": dictionary of calculating condition,
+            "therm": dictionary of thermal property,
+            "trans": dictionary of transport property,
+            "rock": dictionary of rocket property,
+            "mole": dictionary of mole fraction}
+        """
+        Pc = Pc*1e-6    # convert unit Pa to MPa
+        make_inp(self.cea_dirpath, option, of, Pc, list_oxid, list_fuel, eps, fname="tmp")
+        output = self._exe_post_process()
+        return output
+
+    def _exe_post_process(self):
+        self.single_exe(self.cea_dirpath, "tmp")
+        cond, therm, trans, rock, mole = Read_output("cea").read_out("tmp")
+        output = {"cond": cond,
+                  "therm": therm,
+                  "trans": trans,
+                  "rock": rock,
+                  "mole": mole
+                  }
+        return output
 
 
 class Read_output:
@@ -431,34 +516,41 @@ class Read_output:
                             tmp_fraction = []
                             key = dat[i].strip("*")
                         mole_fraction[key] = tmp_fraction
-        file.close()
-
-    #    therm_ntpl = collections.namedtuple("thermval",["c","t","e"])    
-    #    rock_ntpl = collections.namedtuple("rockval",["t","e"])
-    #    P = therm_ntpl(c=therm_param["P"][0], t=therm_param["P"][1], e=therm_param["P"][2])
-    #    T = therm_ntpl(c=therm_param["T"][0], t=therm_param["T"][1], e=therm_param["T"][2])
-    #    rho = therm_ntpl(c=therm_param["RHO"][0], t=therm_param["RHO"][1], e=therm_param["RHO"][2])
-    #    H = therm_ntpl(c=therm_param["H"][0], t=therm_param["H"][1], e=therm_param["H"][2])
-    #    U = therm_ntpl(c=therm_param["U"][0], t=therm_param["U"][1], e=therm_param["U"][2])
-    #    G = therm_ntpl(c=therm_param["G"][0], t=therm_param["G"][1], e=therm_param["G"][2])
-    #    S = therm_ntpl(c=therm_param["S"][0], t=therm_param["S"][1], e=therm_param["S"][2])
-    #    M = therm_ntpl(c=therm_param["M"][0], t=therm_param["M"][1], e=therm_param["M"][2])
-    #    Cp = therm_ntpl(c=therm_param["Cp"][0], t=therm_param["Cp"][1], e=therm_param["Cp"][2])
-    #    gamma = therm_ntpl(c=therm_param["GAMMAs"][0], t=therm_param["GAMMAs"][1], e=therm_param["GAMMAs"][2])
-    #    SON = therm_ntpl(c=therm_param["SON"][0], t=therm_param["SON"][1], e=therm_param["SON"][2])
-    #    MACH = therm_ntpl(c=therm_param["MACH"][0], t=therm_param["MACH"][1], e=therm_param["MACH"][2])
-    #    Eps = rock_ntpl(t=rock_param["Ae/At"][0], e=rock_param["Ae/At"][1])
-    #    cstr = rock_ntpl(t=rock_param["CSTAR"][0], e=rock_param["CSTAR"][1])
-    #    CF = rock_ntpl(t=rock_param["CF"][0], e=rock_param["CF"][1])
-    #    Ispvac = rock_ntpl(t=rock_param["Ivac"][0], e=rock_param["Ivac"][1])
-    #    Isp = rock_ntpl(t=rock_param["Isp"][0], e=rock_param["Isp"][1])    
-    
+        file.close()  
         return(cond_param, therm_param, trans_param, rock_param, mole_fraction)
 
 
 if __name__ == "__main__":
     inst = CEA_execute()
     of, Pc, value_c, value_t, value_e, value_rock, value_mole = inst.all_exe()
+
+    # inst2 = CEA_onetime_execute()
+    # OPTIOIN = "frozen nfz=2"
+    # LIST_SPECIES = [
+    #                     {"name": "O2",
+    #                     "wt": 50,
+    #                     "temp": 290,
+    #                     "h": "",
+    #                     "elem": ""
+    #                     },
+    #                     {"name": "N2",
+    #                     "wt": 25,
+    #                     "temp": 290,
+    #                     "h": "",
+    #                     "elem": ""
+    #                     },
+    #                     {"name": "PE",
+    #                     "wt": 25,
+    #                     "temp": 290,
+    #                     "h": -54.2,
+    #                     "elem": "C 2 H 4"
+    #                     }
+    #                 ]
+    # PC = 1.0e+6 # [Pa]
+    # EPS = 1.0
+    # output = inst2.onetime_exe_name(OPTIOIN, LIST_SPECIES, PC, EPS)
+    # print(output)
+
 #    fld_path = 'D:\\T.J\\Github\\HybridRocketCombustionSim\\Develop\\RockCombustSim\\cea_db\\LOX_PE\\out'
 #    cea_fname = 'Pc_00.20__of_00.10'
 #    Read = Read_output(fld_path)
