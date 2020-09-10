@@ -1,6 +1,7 @@
 *.spec
 *.bat
 *.db
+*.ipynb
 .*
 _*
 build
