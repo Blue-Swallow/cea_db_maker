@@ -390,10 +390,22 @@ class Read_output:
         """
         Extract calculated value from splitted data-list containing raw-data string
         """
-        extract = [str_list[i] for i in range(len(str_list)) if (str_list[i].replace(".","")).replace("-","").isdigit()]
+        # extract = [str_list[i] for i in range(len(str_list)) if (str_list[i].replace(".","")).replace("-","").isdigit()]
+        extract = []
+        for i in range(len(str_list)):     # extract only values and eliminate chracters.
+            tmp = (str_list[i].replace(".", "")).replace("-", "")
+            if tmp.isdigit(): # choose only numerical value
+                extract.append(str_list[i])
+            elif re.search("\*\*\*", tmp):    # change "*******" to np.nan
+                extract.append(np.nan)
+            else:
+                pass
         val_list = []
         for i in extract:
-            if re.search("-.$", i):
+            if i is np.nan:
+                #contain Nan value to val_list
+                val_list.append(i)
+            elif re.search("-.$", i):
                 #calculate exponents, which are sometimes included in "RHO"-row include 
                 flag = re.search("-.$", i)
                 exp = flag.group()
@@ -524,9 +536,11 @@ class Read_output:
 
 
 if __name__ == "__main__":
+# Following Part is Normal Code for Using This Program
     inst = CEA_execute()
     of, Pc, value_c, value_t, value_e, value_rock, value_mole = inst.all_exe()
 
+# Following Part is for debugging the method of single CEA execute
     # inst2 = CEA_onetime_execute()
     # OPTIOIN = "frozen nfz=2"
     # LIST_SPECIES = [
@@ -554,10 +568,12 @@ if __name__ == "__main__":
     # output = inst2.onetime_exe_name(OPTIOIN, LIST_SPECIES, PC, EPS)
     # print(output)
 
-#    fld_path = 'D:\\T.J\\Github\\HybridRocketCombustionSim\\Develop\\RockCombustSim\\cea_db\\LOX_PE\\out'
-#    cea_fname = 'Pc_00.20__of_00.10'
+# Following Part is for debugging the method of reading .out file.
+#    fld_path = "cea"
+#    fname = 'debug'
 #    Read = Read_output(fld_path)
-#    result = Read.read_out(cea_fname)
+#    result = Read.read_out(fname)
 #    cond, therm, trans, rock, mole = result
+#    print(cond, therm, trans, rock, mole)
 
 
