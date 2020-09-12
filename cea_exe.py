@@ -439,7 +439,10 @@ class Read_output:
             key: string, a name of rocket parameter: e.g. "CSTR", "Isp", "CF", etc...
             elem: list [t, e]  *in this case "t" and "e" values are equivalent
                 t: float, a value at the throat
-                e: float, a value at the end of nozzle               
+                e: float, a value at the end of nozzle
+        mole_fraction: dict {key: elem}
+            key: string, a name of chemical species
+            elem: list of float, [c, t, e] *in this case "c" is at chamber, "t" is at throat and "e" is at nozzle exit            
         """
         out_fpath = os.path.join(self.fld_path, cea_fname + ".out")
         file = open(out_fpath,"r")
