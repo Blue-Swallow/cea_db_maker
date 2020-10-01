@@ -7,7 +7,7 @@ import numpy as np
 from scipy import interpolate
 import pandas as pd
 import matplotlib.pyplot as plt
-import os, sys, glob, shutil
+import os, sys, glob, shutil, platform
 import re, copy
 import tqdm
 from subprocess import*
@@ -29,6 +29,7 @@ class CEA_execute:
             Folder's path of data-base, by default None
         """
         self.fld_path = fld_path
+        self.platform = platform.system()
         pass
     
     def _getpath_(self):
@@ -108,11 +109,11 @@ class CEA_execute:
                 dir = os.path.dirname(os.path.join(dbfld_path, i + ".csv"))
                 if not os.path.exists(dir):
                     os.mkdir(dir)
-                df = pd.DataFrame(val_dict[i], index=of, columns=Pc)
+                df = pd.DataFrame(val_dict[i], index=of, columns=Pc).sort_index().sort_index(axis=1)
                 df.to_csv(os.path.join(dbfld_path, i) + ".csv")
         else:
             for i in val_dict:
-                df = pd.DataFrame(val_dict[i], index=of, columns=Pc)
+                df = pd.DataFrame(val_dict[i], index=of, columns=Pc).sort_index().sort_index(axis=1)
                 df.to_csv(os.path.join(dbfld_path, i)+"_"+point+".csv")
 
     def single_exe(self, cea_dirpath, inp_fname):
@@ -129,7 +130,13 @@ class CEA_execute:
         """
         #cea_fname : Name and case of CEA input-file & output-file
         os.chdir(cea_dirpath)
-        cea_path = os.path.join(cea_dirpath, "FCEA2.exe")
+        if self.platform == "Windows":
+            cea_path = os.path.join(cea_dirpath, "FCEA2.exe")
+        elif self.platform == "Linux":
+            cea_path = os.path.join(cea_dirpath, "FCEA2_linux")
+        else:
+            # cea_path = os.path.join(cea_dirpath, "FCEA2_osx")
+            pass
         command = os.path.join(cea_dirpath,inp_fname) + "\n"
         p = Popen(cea_path, stdin=PIPE, stdout=PIPE)
         p.communicate(input=bytes(command,"utf-8"))
