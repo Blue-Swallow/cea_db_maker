@@ -167,7 +167,9 @@ class CEA_execute:
             self.single_exe(cea_dirpath, "tmp")
             shutil.copy(os.path.join(cea_dirpath, "tmp.out"), os.path.join(outfld_path, fname+".out"))
             cond, therm, trans, rock, mole = Read_output("cea").read_out("tmp")
-            
+
+            if cond["O/F"] == 0.0:
+                cond["O/F"] = float(re.sub("Pc_.....__of_" ,"", fname))
             therm.update(trans) #combine dict "therm" and dict "trans"
 
             if i ==0: 
