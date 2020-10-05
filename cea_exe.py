@@ -159,8 +159,7 @@ class CEA_execute:
         cadir, inpfld_path, outfld_path, dbfld_path = self._getpath_()
         cea_dirpath = os.path.join(cadir, "cea")
         split =  lambda r: os.path.splitext(r)[0] # get file name without extention
-        inp_list = [os.path.basename(split(r))  for r in glob.glob(inpfld_path + "/*.inp")]
-          
+        inp_list = [os.path.basename(split(r))  for r in glob.glob(inpfld_path + "/*.inp")]        
                
         for i, fname in enumerate(tqdm.tqdm(inp_list)):
             shutil.copy(os.path.join(inpfld_path,fname+".inp"), os.path.join(cadir,"cea","tmp.inp"))
@@ -172,8 +171,8 @@ class CEA_execute:
                 cond["O/F"] = float(re.sub("Pc_.....__of_" ,"", fname))
             therm.update(trans) #combine dict "therm" and dict "trans"
 
+            #initialize each container array
             if i ==0: 
-                #initialize
                 of = []
                 Pc = [] 
                 value_c = copy.deepcopy(therm)
@@ -189,16 +188,13 @@ class CEA_execute:
                 value_mole = copy.deepcopy(mole)
                 keys_mole = list(mole.keys())
                 for j in mole:
-                    # value_mole[j] = np.zeros((0,0), float)
                     for k in range(mole[j].__len__()):
                         value_mole[j][k] = np.zeros((0,0), float)
 
-#            list_combine = list(mole.keys()) + keys_mole
-#            list_only = [x for x in list_combine if list_combine.count(x) == 1]
             list_only = [x for x in keys_mole if x not in list(mole.keys())]
 
+            #extend row of array when o/f is renewed
             if cond["O/F"] not in of:
-                #extend row of array when o/f is renewed
                 of.append(cond["O/F"])
                 for j in therm:
                     value_c[j] = np.append(value_c[j], np.zeros((1,value_c[j].shape[1]), float), axis=0)
@@ -211,16 +207,14 @@ class CEA_execute:
                         value_mole[j] = [np.array([]) for k in range(mole[j].__len__())]
                         for k in range(mole[j].__len__()):
                             value_mole[j][k] = np.zeros((len(of), len(Pc)), float)
-#                        keys_mole.append(j)
                     else:
                         for k in range(mole[j].__len__()):
                             value_mole[j][k] = np.append(value_mole[j][k], np.zeros((1,value_mole[j][k].shape[1]), float), axis=0)
                 for i in list_only:
                     for k in range(mole[j].__len__()):
                         value_mole[i][k] = np.append(value_mole[i][k], np.zeros((1,value_mole[i][k].shape[1]), float), axis=0)
-
+            #extend column of array when Pc is renewed
             if cond["Pc"] not in Pc:
-                #extend column of array when Pc is renewed
                 Pc.append(cond["Pc"])
                 for j in therm:
                     value_c[j] = np.append(value_c[j], np.zeros((value_c[j].shape[0],1), float), axis=1)
@@ -233,14 +227,12 @@ class CEA_execute:
                         value_mole[j] = [np.array([]) for k in range(mole[j].__len__())]
                         for k in range(mole[j].__len__()):
                             value_mole[j][k] = np.zeros((len(of), len(Pc)), float)
-#                        keys_mole.append(j)
                     else:
                         for k in range(mole[j].__len__()):
                             value_mole[j][k] = np.append(value_mole[j][k], np.zeros((value_mole[j][k].shape[0],1), float), axis=1)
                 for i in list_only:
                     for k in range(mole[j].__len__()):                    
                         value_mole[i][k] = np.append(value_mole[i][k], np.zeros((value_mole[i][k].shape[0],1), float), axis=1)
-
 
             p = of.index(cond["O/F"])
             q = Pc.index(cond["Pc"])
