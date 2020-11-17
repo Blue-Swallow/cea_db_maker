@@ -160,15 +160,21 @@ class CEA_execute:
         cea_dirpath = os.path.join(cadir, "cea")
         split =  lambda r: os.path.splitext(r)[0] # get file name without extention
         inp_list = [os.path.basename(split(r))  for r in glob.glob(inpfld_path + "/*.inp")]        
-               
+
+        num_point = 0               
         for i, fname in enumerate(tqdm.tqdm(inp_list)):
             shutil.copy(os.path.join(inpfld_path,fname+".inp"), os.path.join(cadir,"cea","tmp.inp"))
             self.single_exe(cea_dirpath, "tmp")
             shutil.copy(os.path.join(cea_dirpath, "tmp.out"), os.path.join(outfld_path, fname+".out"))
             cond, therm, trans, rock, mole = Read_output("cea").read_out("tmp")
 
-            if cond["O/F"] == 0.0:
+            if cond["O/F"] == 0.0 or type(cond["O/F"]) is not float:
                 cond["O/F"] = float(re.sub("Pc_.....__of_" ,"", fname))
+            if cond["Pc"] == 0.0 or type(cond["Pc"]) is not float:
+                cond["Pc"] = float(re.sub("Pc_", "", re.sub("__of_....." ,"", fname)))
+            if len(mole) != 0:
+                if len(mole[list(mole.keys())[0]]) > num_point:
+                    num_point =  len(mole[list(mole.keys())[0]])
             therm.update(trans) #combine dict "therm" and dict "trans"
 
             #initialize each container array
@@ -194,7 +200,7 @@ class CEA_execute:
             list_only = [x for x in keys_mole if x not in list(mole.keys())]
 
             #extend row of array when o/f is renewed
-            if cond["O/F"] not in of:
+            if cond["O/F"] not in of and type(cond["O/F"]) is float:
                 of.append(cond["O/F"])
                 for j in therm:
                     value_c[j] = np.append(value_c[j], np.zeros((1,value_c[j].shape[1]), float), axis=0)
@@ -214,7 +220,7 @@ class CEA_execute:
                     for k in range(mole[j].__len__()):
                         value_mole[i][k] = np.append(value_mole[i][k], np.zeros((1,value_mole[i][k].shape[1]), float), axis=0)
             #extend column of array when Pc is renewed
-            if cond["Pc"] not in Pc:
+            if cond["Pc"] not in Pc and type(cond["Pc"]) is float:
                 Pc.append(cond["Pc"])
                 for j in therm:
                     value_c[j] = np.append(value_c[j], np.zeros((value_c[j].shape[0],1), float), axis=1)
@@ -231,19 +237,28 @@ class CEA_execute:
                         for k in range(mole[j].__len__()):
                             value_mole[j][k] = np.append(value_mole[j][k], np.zeros((value_mole[j][k].shape[0],1), float), axis=1)
                 for i in list_only:
-                    for k in range(mole[j].__len__()):                    
+                    # for k in range(mole[j].__len__()):
+                    for k in range(num_point):
                         value_mole[i][k] = np.append(value_mole[i][k], np.zeros((value_mole[i][k].shape[0],1), float), axis=1)
 
             p = of.index(cond["O/F"])
             q = Pc.index(cond["Pc"])
             for j in therm:
                 #Substitute each themodynamic value
-                value_c[j][p,q] = therm[j][0]
-                value_t[j][p,q] = therm[j][1]
-                value_e[j][p,q] = therm[j][2]
+                if len(therm[j]) == 0:
+                    value_c[j][p,q] = np.nan
+                    value_t[j][p,q] = np.nan
+                    value_e[j][p,q] = np.nan
+                else:
+                    value_c[j][p,q] = therm[j][0]
+                    value_t[j][p,q] = therm[j][1]
+                    value_e[j][p,q] = therm[j][2]
             for j in rock:
                 #Substitute each rocket-parameter value
-                value_rock[j][p,q] = rock[j][1]
+                if len(rock[j]) == 0:
+                    value_rock[j][p,q] = np.nan
+                else:    
+                    value_rock[j][p,q] = rock[j][1]
             for j in mole:
                 #Substitute each mole fraction
                 if j not in keys_mole:
@@ -501,6 +516,8 @@ class Read_output:
                     tmp = self._vextract_(dat)
                     cond_param["O/F"] = tmp[0]
                     cond_param["PHI"] = tmp[3]
+                elif(dat_head == "Pc"):
+                    cond_param["Pc"] = round(float(dat[1])*1.0e-1, 4)
                 elif(dat_head in therm_param): #line containing therm_param
                     if (dat_head!="Cp"):
                         therm_param[dat_head] = self._vextract_(dat)
@@ -508,7 +525,7 @@ class Read_output:
                         therm_param[dat_head] = self._vextract_(dat)
                         flag_cp = True
                     if (dat_head == "P"):
-                        cond_param["Pc"] = round(therm_param[dat_head][0] *1.0e-1, 4)
+                        # cond_param["Pc"] = round(therm_param[dat_head][0] *1.0e-1, 4)
                         therm_param[dat_head] = [round(i*1.0e-1, 4) for i in therm_param[dat_head]]
                 elif(dat_head in rock_param): #line containing rock_param
                     rock_param[dat_head] = self._vextract_(dat)
