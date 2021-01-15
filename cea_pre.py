@@ -7,6 +7,7 @@ import os
 import copy
 import numpy as np
 import pandas as pd
+import json
 from tqdm import tqdm
 
 cond_name = "cond.txt"
@@ -317,6 +318,34 @@ class Cui_input():
         path = os.path.join(cadir, "cea_db", foldername)
         return(path)
 
+    def _make_json_(self, fldpath):
+        """
+        Generate a input calculation condition as a json file
+        
+        Parameters
+        ----------
+        fldpath : string
+            folder path
+        """
+        option = self.option
+        oxid = self.list_oxid
+        fuel = self.list_fuel
+        other = self.list_other
+        eps = self.eps
+        pc = self.Pc
+        of = self.of
+        dic = {"option": option,
+               "oxid": oxid,
+               "fuel": fuel,
+               "other": other,
+               "eps": eps,
+               "pc_range": pc,
+               "of_range": of
+               }
+        with open(os.path.join(fldpath, "cond.json") ,"w") as jsout:
+            json.dump(dic, jsout, indent=4)
+        
+
 
     def gen_all(self):
         """
@@ -365,6 +394,7 @@ class Cui_input():
                     list_species = list_oxid + list_fuel + self.list_other
                     fname = "Pc_{:0>5.2f}__of_{:0>5.2f}".format(round(Pc[i],num_round), round(of[j],num_round)) #.inp file name, e.g. "Pc=1.00_of=6.00"
                     make_inp_name(path, self.option, list_species, Pc[i], self.eps, fname=fname)
+        self._make_json_(fld_path) # make condition file as json
         return(fld_path)
 
 
