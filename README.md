@@ -5,7 +5,7 @@ NASA-CEAをrocketモードで実行した結果をデータベース化し，さ
 ※ 必要なpythonパッケージは適宜入れてください（不親切ですいません）
 
 
-## 1. What "CEA-DB_Maker" Can Do for You　 
+## 1. What "CEA-DB_Maker" ?　 
 "CEA-DB_Maker"で出来ることを下記に示す．  
 * 複数の燃焼室圧力PcとO/Fの条件に対する，熱力学，ロケット性能，熱輸送パラメータを各パラメータ毎にcsvファイルにデータベース化  
 * 複数の燃焼室圧力PcとO/Fの条件に対する，燃焼生成物(MoleFraction)を，各生成物毎にcsvファイルにデータベース化  
