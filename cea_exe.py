@@ -134,9 +134,11 @@ class CEA_execute:
             cea_path = os.path.join(cea_dirpath, "FCEA2.exe")
         elif self.platform == "Linux":
             cea_path = os.path.join(cea_dirpath, "FCEA2_linux")
+        elif self.platform == "Darwin":
+            cea_path = os.path.join(cea_dirpath, "FCEA2_mac")
         else:
-            # cea_path = os.path.join(cea_dirpath, "FCEA2_osx")
-            pass
+            print("Sorry, this program does not support \"{}\" system.".format(self.platform))
+            sys.exit()
         command = os.path.join(cea_dirpath,inp_fname) + "\n"
         p = Popen(cea_path, stdin=PIPE, stdout=PIPE)
         p.communicate(input=bytes(command,"utf-8"))
