@@ -1,7 +1,7 @@
 # CEA-DB_Maker
 This program makes the DataBase of the result calculated by NASA-CEA rocket problem mode  
 NASA-CEAをrocketモードで実行した結果をデータベース化し，さらにそこから値を呼び出したりするプログラム  
-※ windows, python 3 に対応  
+※ windows,Ubuntu,macOS python 3 に対応  
 ※ 必要なpythonパッケージは適宜入れてください（不親切ですいません）
 
 
