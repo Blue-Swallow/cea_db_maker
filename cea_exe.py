@@ -2,6 +2,7 @@
 """
 Execute CEA calculation
 """
+# %%
 
 import numpy as np
 from scipy import interpolate
@@ -15,7 +16,7 @@ import warnings
 import time
 from cea_pre import make_inp_name, make_inp
 
-
+# %%
 class CEA_execute:
     """
     Class to excecute CEA calculation
@@ -404,11 +405,17 @@ class Read_output:
     rock_param  = ["CSTAR", "CF", "Ivac", "Isp"]
     trans_param = ["VISC", "CONDUCTIVITY", "PRANDTL"]
     
-    def _vextract_(self, str_list):
+    def _vextract_(self, str_list, num=False):
         """
         Extract calculated value from splitted data-list containing raw-data string
+
+        Parameters
+        ----------
+        str_list : list of string
+            obtained stings from a line as a list form
+        num : int, optional
+            expected the number of calcualtion point as chamber, throat and nozzle exit, by default False
         """
-        # extract = [str_list[i] for i in range(len(str_list)) if (str_list[i].replace(".","")).replace("-","").isdigit()]
         extract = []
         for i in range(len(str_list)):     # extract only values and eliminate chracters.
             tmp = (str_list[i].replace(".", "")).replace("-", "")
@@ -416,10 +423,12 @@ class Read_output:
                 extract.append(str_list[i])
             elif re.search("\*\*\*", tmp):    # change "*******" to np.nan
                 extract.append(np.nan)
+            elif re.search("NaN", tmp):       # change "NaN" to np.nan
+                extract.append(np.nan)
             else:
                 pass
         val_list = []
-        for i in extract:
+        for i in extract: # modification for Nan value or exponential value and so on....
             if i is np.nan:
                 #contain Nan value to val_list
                 val_list.append(i)
@@ -434,6 +443,10 @@ class Read_output:
                 pass
             else:
                 val_list.append(float(i))
+        if num:
+            nanpad = num - len(val_list)
+            for i in range(nanpad):
+                val_list.append(np.nan)
         return(val_list)
                 
     
@@ -507,35 +520,35 @@ class Read_output:
             line = file.readline()
             warnings.filterwarnings("ignore") # ignore Further Warnings about "empty-string"
             dat = re.split("[\s=]+",line)
-            del(dat[0])
-            if (len(dat) >= 1):
+            del(dat[0]) # remove initial space
+            if (len(dat) >= 1): # remove end character
                 del(dat[-1])
             if(len(dat)==0): # empty line
                 pass
             else: # not-empty line
-                dat_head = dat[0].split(",")[0]
-                if(dat_head in cond_param and len(dat)>3):
+                dat_head = dat[0].split(",")[0] # extract parameter name as dat_head
+                if(dat_head in cond_param and len(dat)>3): # attract O/F and stoichiometric ratio, PHI.
                     tmp = self._vextract_(dat)
                     cond_param["O/F"] = tmp[0]
                     cond_param["PHI"] = tmp[3]
-                elif(dat_head == "Pc"):
+                elif(dat_head == "Pc"): # attract chamber pressure Pc [MPa].
                     cond_param["Pc"] = round(float(dat[1])*1.0e-1, 4)
                 elif(dat_head in therm_param): #line containing therm_param
                     if (dat_head!="Cp"):
-                        therm_param[dat_head] = self._vextract_(dat)
+                        therm_param[dat_head] = self._vextract_(dat, num=3)
                     elif (dat_head=="Cp" and flag_cp==False):
-                        therm_param[dat_head] = self._vextract_(dat)
+                        therm_param[dat_head] = self._vextract_(dat, num=3)
                         flag_cp = True
                     if (dat_head == "P"):
                         # cond_param["Pc"] = round(therm_param[dat_head][0] *1.0e-1, 4)
                         therm_param[dat_head] = [round(i*1.0e-1, 4) for i in therm_param[dat_head]]
                 elif(dat_head in rock_param): #line containing rock_param
-                    rock_param[dat_head] = self._vextract_(dat)
+                    rock_param[dat_head] = self._vextract_(dat, num=2)
                 elif(dat_head in trans_param):
                     if (dat_head=="VISC"):
-                        trans_param[dat_head] = self._vextract_(dat)
+                        trans_param[dat_head] = self._vextract_(dat, num=3)
                     elif(count_trans < 3):
-                        trans_param[dat_head] = self._vextract_(dat)
+                        trans_param[dat_head] = self._vextract_(dat, num=3)
                         count_trans += 1
                 elif(dat_head == "MOLE"):
                     flag_mole = True
@@ -554,7 +567,7 @@ class Read_output:
         file.close()  
         return(cond_param, therm_param, trans_param, rock_param, mole_fraction)
 
-
+# %%
 if __name__ == "__main__":
 # Following Part is Normal Code for Using This Program
     inst = CEA_execute()
@@ -589,11 +602,11 @@ if __name__ == "__main__":
     # print(output)
 
 # Following Part is for debugging the method of reading .out file.
-#    fld_path = "cea"
-#    fname = 'debug'
-#    Read = Read_output(fld_path)
-#    result = Read.read_out(fname)
-#    cond, therm, trans, rock, mole = result
-#    print(cond, therm, trans, rock, mole)
+    # fld_path = os.path.join("cea_db", "debug1", "out")
+    # fname = "Pc_00.70__of_00.70"
+    # Read = Read_output(fld_path)
+    # result = Read.read_out(fname)
+    # cond, therm, trans, rock, mole = result
+    # print(cond, therm, trans, rock, mole)
 
 
