@@ -130,6 +130,12 @@ class Cui_input():
 
     _tmp_["confirm"] = {"jp": "\n入力した内容は正確ですか? \"y/n\"",
                 "en": "\nIs the inputted data correct? \"y/n\""}
+
+    _tmp_["jsconf"] = {"jp": "\n既に存在する cond.json ファイルから計算条件を読み込みますか？ \"y/n\"",
+                "en": "\nDo you want to read the calculating conditioin from existing \"cond.json\"? \"y/n\""}
+
+    _tmp_["casename"] = {"jp": "\n計算ケース名（フォルダ名）を入力して下さい．",
+                "en": "\nInput a Case Name (Folder Name)"}
    
 
     def __init__(self):
@@ -137,16 +143,26 @@ class Cui_input():
         for i in self._tmp_:
             self.sntns_df = self.sntns_df.append(pd.DataFrame(self._tmp_[i], index=[i]))
         self._inp_lang_()
-        self._inp_option_()
-        self.list_oxid = self._inp_react_("oxid")
-        self.list_fuel = self._inp_react_("fuel")
-        if self._inp_option_other_():
-            self.list_other = self._inp_react_("other")
+        self.fld_path = self._getpath_()
+        if os.path.exists(os.path.join(self.fld_path, "cond.json")):
+            ## when read a calculating condition from cond.json, flag == True, if not, flag == False
+            flag = self._conf_readjs_()
         else:
-            self.list_other = []
-        self._inp_eps_()
-        self._inp_of_()
-        self._inp_Pc_()
+            ## when program could not find cond.json, flag == False
+            flag = False
+        if flag:
+            self._read_json_(self.fld_path)
+        else:
+            self._inp_option_()
+            self.list_oxid = self._inp_react_("oxid")
+            self.list_fuel = self._inp_react_("fuel")
+            if self._inp_option_other_():
+                self.list_other = self._inp_react_("other")
+            else:
+                self.list_other = []
+            self._inp_eps_()
+            self._inp_of_()
+            self._inp_Pc_()
 
     def _inp_lang_(self):
         """
@@ -158,6 +174,37 @@ class Cui_input():
             self.lang = lang
         else:
             print("There is no such language set!")
+
+    def _getpath_(self):
+        """
+        Return the folder path which will cantain cea files: .inp, .out and csv cea-database
+        """
+        cadir = os.path.dirname(os.path.abspath(__file__))
+        print(self.sntns_df[self.lang]["casename"])
+        foldername = str(input(">> "))
+        path = os.path.join(cadir, "cea_db", foldername)
+        return(path)
+
+    def _conf_readjs_(self):
+        """
+        Confirm whether reading a json condition file or not.
+
+        Return
+        -------
+        flag: bool
+        """
+        while True:
+            print(self.sntns_df[self.lang]["jsconf"])
+            option = str(input(">> "))
+            if option == "y":
+                flag = True
+                break
+            elif option == "n":
+                flag = False
+                break
+            else:
+                print("Please re-confirm the input answer. Input \"y\" or \"n\"")
+        return flag
 
     def _inp_option_(self):
         """
@@ -309,14 +356,24 @@ class Cui_input():
         print(self.sntns_df[self.lang]["Pc"])
         self.Pc = list(map(lambda x: float(x) ,input(">> ").split()))
 
-    def _getpath_(self):
+    def _read_json_(self, fldpath):
         """
-        Return the folder path which will cantain cea files: .inp, .out and csv cea-database
+        Read a input calculation condition from a json file "cond.json"
+        
+        Parameters
+        ----------
+        fldpath : string
+            folder path
         """
-        cadir = os.path.dirname(os.path.abspath(__file__))
-        foldername = input("Input a Case Name (Folder Name)\n>>")
-        path = os.path.join(cadir, "cea_db", foldername)
-        return(path)
+        with open(os.path.join(fldpath, "cond.json"), "r") as jsread:
+            dic = json.load(jsread)
+        self.option = dic["option"]
+        self.list_oxid = dic["oxid"]
+        self.list_fuel = dic["fuel"]
+        self.list_other = dic["other"]
+        self.eps = dic["eps"]
+        self.Pc = dic["pc_range"]
+        self.of = dic["of_range"]
 
     def _make_json_(self, fldpath):
         """
@@ -370,8 +427,7 @@ class Cui_input():
             of: list, [start, end, interval], each element type is float  \n
             
         """
-        fld_path = self._getpath_()
-        path = os.path.join(fld_path, "inp")
+        path = os.path.join(self.fld_path, "inp")
         of = np.arange(self.of[0], self.of[1], self.of[2])
         Pc = np.arange(self.Pc[0], self.Pc[1], self.Pc[2])
         if len(self.list_other) != 0:
@@ -394,8 +450,8 @@ class Cui_input():
                     list_species = list_oxid + list_fuel + self.list_other
                     fname = "Pc_{:0>5.2f}__of_{:0>5.2f}".format(round(Pc[i],num_round), round(of[j],num_round)) #.inp file name, e.g. "Pc=1.00_of=6.00"
                     make_inp_name(path, self.option, list_species, Pc[i], self.eps, fname=fname)
-        self._make_json_(fld_path) # make condition file as json
-        return(fld_path)
+        self._make_json_(self.fld_path) # make condition file as json
+        return(self.fld_path)
 
 
 

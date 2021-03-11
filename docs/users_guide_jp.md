@@ -214,10 +214,10 @@ Input Folder Name (e.g. "O2+PMMA")
 
 | Symbol | Parameter |
 |:---|:---|
-|CSTAR |c* 効率 |
+|CSTAR |特性排気速度 [m/s] |
 |CF |推力係数 |
-|Isp |比推力(最適膨張) [s] |
-|Ivac |真空中比推力 [s] |
+|Isp |比推力(最適膨張) [m/s] |
+|Ivac |真空中比推力 [m/s] |
   
 **熱力学的パラメタ一覧**
 
@@ -234,7 +234,7 @@ Input Folder Name (e.g. "O2+PMMA")
 |S |エントロピ [kJ/kg-K] |
 |SON |音速 [m/s] |
 |T |温度 [K] |
-|U |内部エネルギ [ｋJ/kg] |
+|U |内部エネルギ [kJ/kg] |
 
 **熱輸送関係のパラメタ一覧**
 
@@ -271,7 +271,7 @@ Input parameter name (That is same as csv file name.)
 >> CSTAR
 ~~~  
 
-* 描画するO/Fの範囲を入力する． (データベースのO/Fの条件が4つ以上ないとエラーが出る)  
+* 描画するO/Fの範囲を入力する． (データベースのO/F行の結果が4つ以上ないとエラーが出る)  
 ~~~  
 Please input the range of O/F where you want to plot.
 e.g. If the range is 0.5 to 5.0
@@ -279,7 +279,7 @@ e.g. If the range is 0.5 to 5.0
 >> 0.5 5.0
 ~~~  
   
-* 描画するPcの範囲と間隔を入力する．(データベースのPcの条件が4つ以上ないとエラーが出る)  
+* 描画するPcの範囲と間隔を入力する．(データベースのPc列の結果が4つ以上ないとエラーが出る)  
 ~~~  
 Please input the range of Pc where you want to plot.
 Range: 0.2 ~ 99.99, Minimum interval: 00.1 MPa

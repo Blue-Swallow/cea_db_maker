@@ -278,8 +278,12 @@ class CEA_execute:
                             value_mole[i][k][p,q] = 0.0
         
         # exchange the content of "value_mole"
-        tmp_mole = [np.nan for i in range(value_mole[j].__len__())]
-        for i in range(value_mole[j].__len__()):
+        try:
+            num_place = value_mole[next(iter(value_mole))].__len__() # count the number of calculation points
+        except StopIteration:
+            num_place = 0
+        tmp_mole = [np.nan for i in range(num_place)]
+        for i in range(num_place):
             tmp_dic = {}
             for j in value_mole:
                 tmp_dic[j] = value_mole[j][i]
