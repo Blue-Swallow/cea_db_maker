@@ -307,7 +307,8 @@ if __name__ == "__main__":
 
             flag = True
             while flag:
-                param_name = input("\nInput parameter name (That is same as csv file or mole fraction folder name.)\n>> ")
+                param_name = input("\nInput parameter name (That is same as csv file or mole fraction folder name.)"\
+                                    +"\ne.g. CSTAR, GAMMAs_c, MoleFracion@Throat, MoleFraction@Throat/H2O, etc...\n>> ")
                 if os.path.exists(os.path.join(dbfld_path, param_name)) or os.path.exists(os.path.join(dbfld_path, param_name+".csv")):
                     flag = False
                 else:
