@@ -1,6 +1,22 @@
 # -*- coding: utf-8 -*-
 """
-Read and utilize the result of CEA calculation
+Generate graph plot and provide interporating function for 
+each parameter calculated by NASA-CEA using .csv database.
+
+Brief Description:
+Generate parameter graph plots for O/F and Pc condition
+saved as *.csv database, wihch was calculated by NASA-CEA. 
+Also Read and generate interpolating function of each parameter
+calculated by NASA-CEA from *.csv database. 
+
+
+This module provide some functions or classes as the followings;
+* Read_datset: class for generate plot and interpolating function.
+
+Author: T.J.
+Created: 04/01/2018
+Revised: 03/12/2021
+Version: 3.0.0 (STABLE)
 """
 
 import numpy as np
