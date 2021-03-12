@@ -5,7 +5,11 @@
 _*
 build
 dist
-cea/*.inp
-cea/*.out
-cea_db/
-!cea_db/sample/
+/cea/*.inp
+/cea/*.out
+/cea_db/*
+!/cea_db/sample/*
+# !cea_db/sample/csv_database
+# !cea_db/sample/cond.json
+# !cea_db/sample/inp.zip
+# !cea_db/sample/out.zip

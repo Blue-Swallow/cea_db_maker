@@ -1,6 +1,22 @@
 # -*- coding: utf-8 -*-
 """
-Read and utilize the result of CEA calculation
+Generate graph plot and provide interporating function for 
+each parameter calculated by NASA-CEA using .csv database.
+
+Brief Description:
+Generate parameter graph plots for O/F and Pc condition
+saved as *.csv database, wihch was calculated by NASA-CEA. 
+Also Read and generate interpolating function of each parameter
+calculated by NASA-CEA from *.csv database. 
+
+
+This module provide some functions or classes as the followings;
+* Read_datset: class for generate plot and interpolating function.
+
+Author: T.J.
+Created: 04/01/2018
+Revised: 03/12/2021
+Version: 3.0.0 (STABLE)
 """
 
 import numpy as np
@@ -308,7 +324,11 @@ if __name__ == "__main__":
             flag = True
             while flag:
                 param_name = input("\nInput parameter name (That is same as csv file or mole fraction folder name.)"\
+<<<<<<< HEAD
+                                    +"\ne.g. CSTAR, GAMMAs_c, MoleFraction@Chamber, MoleFraction@Chamber/H2O\n>> ")
+=======
                                     +"\ne.g. CSTAR, GAMMAs_c, MoleFracion@Throat, MoleFraction@Throat/H2O, etc...\n>> ")
+>>>>>>> master
                 if os.path.exists(os.path.join(dbfld_path, param_name)) or os.path.exists(os.path.join(dbfld_path, param_name+".csv")):
                     flag = False
                 else:
@@ -317,7 +337,13 @@ if __name__ == "__main__":
                     flist = [txt.replace(".csv", "") for txt in flist]
                     print("There is no such a data base. Please input the parameter name from the followings;\n")
                     print(flist)
-                    print(inst.get_flist())
+                    flist_mole = inst.get_flist()
+                    for name in flist:
+                        try:
+                            flist_mole.remove(name)
+                        except ValueError:
+                            pass
+                    print(flist_mole)
 
             if param_name in ["MoleFraction@Chamber", "MoleFraction@Throat", "MoleFraction@Exit"]:
                 print("\n\nPlease input the range of O/F where you want to plot.\ne.g. If the range is 0.5 to 5.0 \n0.5 5.0")
