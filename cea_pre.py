@@ -1,6 +1,25 @@
 # -*- coding: utf-8 -*-
 """
-Generate NASA-CEA input file "*.inp"
+Generate NASA-CEA input files "*.inp"
+
+Brief Description:
+This program generates "*.inp" files assigning each condition
+as a command line. Generated .inp files will be located in the
+assigned case name folder under "cea_db/inp" directory. Also
+you can utilize indivisual functions such as "make_inp()", 
+"make_inp_name()" for generating one specific .inp file.
+
+This module provide some functions or classes as the followings;
+* make_inp: function for generating one specific .inp file, when
+            you assign chem species as "oxid" and "fuel" in *.inp.
+* make_inp_name: function for generating one specific .inp file, when
+            you assign chem species as "name" in *.inp.
+* Cui_input: class for assigning conditions and generating .inp files
+
+Author: T.J.
+Created: 04/01/2018
+Revised: 03/12/2021
+Version: 3.0.0 (STABLE)
 """
 
 import os
@@ -9,8 +28,6 @@ import numpy as np
 import pandas as pd
 import json
 from tqdm import tqdm
-
-cond_name = "cond.txt"
 
 class Cui_input():
     """
@@ -559,16 +576,5 @@ def make_inp_name(path, option, list_species, Pc, eps, fname=False):
 
 
 if __name__ == "__main__":
-#    path = _getpath_()
-#    test = gen_all(path)
-
     myclass = Cui_input()
-#    path = "D:\T.J\Github\HybridRocketCombustionSim\Develop\RockCombustSim"
-#    option = "frozen nfz=2"
-#    of = 1.0
-#    Pc = 1.0
-#    list_oxid = myclass.list_oxid
-#    list_fuel = myclass.list_fuel
-#    eps = 1.0
-#    make_inp(path, option, of, Pc, list_oxid, list_fuel, eps)
     myclass.gen_all()
