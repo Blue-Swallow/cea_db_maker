@@ -323,7 +323,8 @@ if __name__ == "__main__":
 
             flag = True
             while flag:
-                param_name = input("\nInput parameter name (That is same as csv file or mole fraction folder name.)\n>> ")
+                param_name = input("\nInput parameter name (That is same as csv file or mole fraction folder name.)"\
+                                    +"\ne.g. CSTAR, GAMMAs_c, MoleFraction@Chamber, MoleFraction@Chamber/H2O\n>> ")
                 if os.path.exists(os.path.join(dbfld_path, param_name)) or os.path.exists(os.path.join(dbfld_path, param_name+".csv")):
                     flag = False
                 else:
@@ -332,7 +333,13 @@ if __name__ == "__main__":
                     flist = [txt.replace(".csv", "") for txt in flist]
                     print("There is no such a data base. Please input the parameter name from the followings;\n")
                     print(flist)
-                    print(inst.get_flist())
+                    flist_mole = inst.get_flist()
+                    for name in flist:
+                        try:
+                            flist_mole.remove(name)
+                        except ValueError:
+                            pass
+                    print(flist_mole)
 
             if param_name in ["MoleFraction@Chamber", "MoleFraction@Throat", "MoleFraction@Exit"]:
                 print("\n\nPlease input the range of O/F where you want to plot.\ne.g. If the range is 0.5 to 5.0 \n0.5 5.0")
