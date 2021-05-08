@@ -579,14 +579,15 @@ class Read_output:
                 elif(dat_head == "*"):
                     flag_mole = False
                 elif(flag_mole):
+                    tmp_fraction = []
                     for i in range(len(dat)):
                         tmp_dat = dat[i].replace(".", "")
-                        tmp_fraction = []
+                        # tmp_fraction = []
                         if tmp_dat.isdecimal():
                             tmp_fraction.append(float(dat[i]))
                         else:
                             key = dat[i].strip("*")
-                        mole_fraction[key] = tmp_fraction
+                    mole_fraction[key] = tmp_fraction
         file.close()  
         return(cond_param, therm_param, trans_param, rock_param, mole_fraction)
 
@@ -626,7 +627,7 @@ if __name__ == "__main__":
 
 # Following Part is for debugging the method of reading .out file.
     # fld_path = os.path.join("cea_db", "debug1", "out")
-    # fname = "Pc_00.70__of_00.70"
+    # fname = "Pc_00.50__of_00.50"
     # Read = Read_output(fld_path)
     # result = Read.read_out(fname)
     # cond, therm, trans, rock, mole = result
