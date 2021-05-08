@@ -18,8 +18,8 @@ This module provide some functions or classes as the followings;
 
 Author: T.J.
 Created: 04/01/2018
-Revised: 03/12/2021
-Version: 3.0.0 (STABLE)
+Revised: 05/08/2021
+Version: 3.1.0 (BETA)
 """
 
 import os
