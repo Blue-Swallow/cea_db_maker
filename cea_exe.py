@@ -451,21 +451,25 @@ class Read_output:
             else:
                 pass
         val_list = []
+        counter = 0
         for i in extract: # modification for Nan value or exponential value and so on....
             if i is np.nan:
-                #contain Nan value to val_list
+                # contain Nan value to val_list
                 val_list.append(i)
             elif re.search("-.$", i):
-                #calculate exponents, which are sometimes included in "RHO"-row include 
+                # calculate negative exponents, which are sometimes included in "RHO"-row include 
                 flag = re.search("-.$", i)
                 exp = flag.group()
                 base = i.replace(exp, "")
                 val_list.append(float(base)*np.power(10, float(exp)))
-            elif (float(i)==0.0 and len(i)==1):
-                #eliminate eponent "0", which are sometimes included in "RHO"-row include 
-                pass
+            elif len(i)==1:
+                exp = i
+                base = val_list[counter-1]
+                val_list[counter-1] = float(base)*np.power(10, float(exp))
+                counter -= 1
             else:
                 val_list.append(float(i))
+            counter += 1
         if num:
             nanpad = num - len(val_list)
             for i in range(nanpad):
@@ -626,8 +630,8 @@ if __name__ == "__main__":
     # print(output)
 
 # Following Part is for debugging the method of reading .out file.
-    # fld_path = os.path.join("cea_db", "debug1", "out")
-    # fname = "Pc_00.50__of_00.50"
+    # fld_path = os.path.join("cea_db", "LOX_LCH4", "out")
+    # fname = "Pc_00.10__of_00.20"
     # Read = Read_output(fld_path)
     # result = Read.read_out(fname)
     # cond, therm, trans, rock, mole = result
