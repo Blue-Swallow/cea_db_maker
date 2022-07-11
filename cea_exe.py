@@ -617,6 +617,9 @@ class Read_output:
                             else:
                                 pass
                             key = dat[i].strip("*") # get the name of combustion products species
+                        if i == (len(dat)-1): # add last item of "dat" to "mole_fraction"
+                            mole_fraction[key] = tmp_fraction
+                            tmp_fraction = []
         file.close()  
         return(cond_param, therm_param, trans_param, rock_param, mole_fraction)
 
