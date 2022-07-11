@@ -626,8 +626,8 @@ class Read_output:
 # %%
 if __name__ == "__main__":
 # Following Part is Normal Code for Using This Program
-    # inst = CEA_execute()
-    # of, Pc, value_c, value_t, value_e, value_rock, value_mole = inst.all_exe()
+    inst = CEA_execute()
+    of, Pc, value_c, value_t, value_e, value_rock, value_mole = inst.all_exe()
 
 # Following Part is for debugging the method of single CEA execute
     # inst2 = CEA_onetime_execute()
@@ -658,12 +658,12 @@ if __name__ == "__main__":
     # print(output)
 
 # Following Part is for debugging the method of reading .out file.
-    fld_path = os.path.join("cea_db", "test_equilibrium", "out")
-    # fname = "Pc_00.10__of_00.20"
-    fname = "test"
-    Read = Read_output(fld_path)
-    result = Read.read_out(fname)
-    cond, therm, trans, rock, mole = result
-    print(cond, therm, trans, rock, mole)
+    # fld_path = os.path.join("cea_db", "test_equilibrium", "out")
+    # # fname = "Pc_00.10__of_00.20"
+    # fname = "test"
+    # Read = Read_output(fld_path)
+    # result = Read.read_out(fname)
+    # cond, therm, trans, rock, mole = result
+    # print(cond, therm, trans, rock, mole)
 
 
