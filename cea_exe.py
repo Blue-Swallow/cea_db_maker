@@ -21,7 +21,7 @@ This module provide some functions or classes as the followings;
 Author: T.J.
 Created: 04/01/2018
 Revised: 03/12/2021
-Version: 3.0.0 (STABLE)
+Version: 3.1.0 (BETA)
 """
 
 # %%
@@ -331,7 +331,7 @@ class CEA_onetime_execute(CEA_execute):
         cadir = os.path.dirname(os.path.abspath(__file__))
         self.cea_dirpath = os.path.join(cadir, "cea")
 
-    def onetime_exe_name(self, option, list_species, Pc, eps):
+    def onetime_exe_name(self, option, list_species, Pc, eps, **kwargs):
         """
         Execute CEA in onetime; preparing ".inp", execute CEA and read ".out" file,
         when you assign several species and its fraction of amount.
@@ -347,7 +347,10 @@ class CEA_onetime_execute(CEA_execute):
             Camberpressure, [Pa]
         eps: float,
             Area ratio of nozzle throat & exit, Ae/At
-        
+        **kwargs: dict of string
+            {"list_omit": ["str", "str", ...], : list of chemical species that are omitted from calulation
+            "list_only": ["str", "str"]} : list of chemical species that calculation only consider
+
         Return
         ----------
         output: dictionary of dictionary
@@ -357,12 +360,20 @@ class CEA_onetime_execute(CEA_execute):
             "rock": dictionary of rocket property,
             "mole": dictionary of mole fraction}
         """
+        if "list_omit" in kwargs:
+            list_omit = kwargs["list_omit"]
+        else:
+            list_omit = []
+        if "list_only" in kwargs:
+            list_only = kwargs["list_only"]
+        else:
+            list_only = []
         Pc = Pc*1e-6    # convert unit Pa to MPa
-        make_inp_name(self.cea_dirpath, option, list_species, Pc, eps, fname="tmp")
+        make_inp_name(self.cea_dirpath, option, list_species, Pc, eps, list_omit=list_omit, list_only=list_only, fname="tmp")
         output = self._exe_post_process()
         return output
 
-    def onetime_exe_of(self, option, of, Pc, list_oxid, list_fuel, eps):
+    def onetime_exe_of(self, option, of, Pc, list_oxid, list_fuel, eps, **kwargs):
         """
         Execute CEA in onetime; preparing ".inp", execute CEA and read ".out" file,
         when you assign only oxid and fuel species, and O/F.
@@ -382,7 +393,10 @@ class CEA_onetime_execute(CEA_execute):
             The list has an information about fuel as dict type; dict{"name":name, "wt":weight fraction, "temp":initial temperature, "h":enthalpy, "elem"element}
         eps: float,
             Area ratio of nozzle throat & exit, Ae/At
-        
+        **kwargs: dict of string
+            {"list_omit": ["str", "str", ...], : list of chemical species that are omitted from calulation
+            "list_only": ["str", "str"]} : list of chemical species that calculation only consider
+
         Return
         ----------
         output: dictionary of dictionary
@@ -392,8 +406,16 @@ class CEA_onetime_execute(CEA_execute):
             "rock": dictionary of rocket property,
             "mole": dictionary of mole fraction}
         """
+        if "list_omit" in kwargs:
+            list_omit = kwargs["list_omit"]
+        else:
+            list_omit = []
+        if "list_only" in kwargs:
+            list_only = kwargs["list_only"]
+        else:
+            list_only = []
         Pc = Pc*1e-6    # convert unit Pa to MPa
-        make_inp(self.cea_dirpath, option, of, Pc, list_oxid, list_fuel, eps, fname="tmp")
+        make_inp(self.cea_dirpath, option, of, Pc, list_oxid, list_fuel, eps, list_omit=list_omit, list_only=list_only, fname="tmp")
         output = self._exe_post_process()
         return output
 
@@ -451,21 +473,25 @@ class Read_output:
             else:
                 pass
         val_list = []
+        counter = 0
         for i in extract: # modification for Nan value or exponential value and so on....
             if i is np.nan:
-                #contain Nan value to val_list
+                # contain Nan value to val_list
                 val_list.append(i)
             elif re.search("-.$", i):
-                #calculate exponents, which are sometimes included in "RHO"-row include 
+                # calculate negative exponents, which are sometimes included in "RHO"-row include 
                 flag = re.search("-.$", i)
                 exp = flag.group()
                 base = i.replace(exp, "")
                 val_list.append(float(base)*np.power(10, float(exp)))
-            elif (float(i)==0.0 and len(i)==1):
-                #eliminate eponent "0", which are sometimes included in "RHO"-row include 
-                pass
+            elif len(i)==1:
+                exp = i
+                base = val_list[counter-1]
+                val_list[counter-1] = float(base)*np.power(10, float(exp))
+                counter -= 1
             else:
                 val_list.append(float(i))
+            counter += 1
         if num:
             nanpad = num - len(val_list)
             for i in range(nanpad):
@@ -539,6 +565,7 @@ class Read_output:
         flag_cp = False
         count_trans = 0
         flag_mole = False
+        tmp_fraction = []
         while line:
             line = file.readline()
             warnings.filterwarnings("ignore") # ignore Further Warnings about "empty-string"
@@ -581,12 +608,18 @@ class Read_output:
                 elif(flag_mole):
                     for i in range(len(dat)):
                         tmp_dat = dat[i].replace(".", "")
-                        tmp_fraction = []
                         if tmp_dat.isdecimal():
                             tmp_fraction.append(float(dat[i]))
                         else:
-                            key = dat[i].strip("*")
-                        mole_fraction[key] = tmp_fraction
+                            if tmp_fraction: # if temp_fraction is not empty, mole_fraction containes the list of mole fraction value.
+                                mole_fraction[key] = tmp_fraction
+                                tmp_fraction = []
+                            else:
+                                pass
+                            key = dat[i].strip("*") # get the name of combustion products species
+                        if i == (len(dat)-1): # add last item of "dat" to "mole_fraction"
+                            mole_fraction[key] = tmp_fraction
+                            tmp_fraction = []
         file.close()  
         return(cond_param, therm_param, trans_param, rock_param, mole_fraction)
 
@@ -625,8 +658,9 @@ if __name__ == "__main__":
     # print(output)
 
 # Following Part is for debugging the method of reading .out file.
-    # fld_path = os.path.join("cea_db", "debug1", "out")
-    # fname = "Pc_00.70__of_00.70"
+    # fld_path = os.path.join("cea_db", "test_equilibrium", "out")
+    # # fname = "Pc_00.10__of_00.20"
+    # fname = "test"
     # Read = Read_output(fld_path)
     # result = Read.read_out(fname)
     # cond, therm, trans, rock, mole = result
